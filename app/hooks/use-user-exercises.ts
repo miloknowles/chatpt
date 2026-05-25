@@ -141,8 +141,9 @@ export function useUserExercises({
       return
     }
 
+    const channelName = `user_exercises:${user.id}:${Math.random().toString(36).slice(2)}`
     const channel = supabase
-      .channel(`user_exercises:${user.id}`)
+      .channel(channelName)
       .on(
         "postgres_changes",
         {

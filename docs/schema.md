@@ -155,4 +155,35 @@ create table user_notes (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Chat conversations
+create table user_conversations (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users on delete cascade not null,
+  title text not null default 'New conversation',
+  status text not null default 'active' check (status in ('active', 'archived', 'deleted')),
+  summary text,
+  last_message_at timestamptz,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, id),
+  check (length(btrim(title)) > 0)
+);
+
+-- Chat messages
+create table user_messages (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users on delete cascade not null,
+  conversation_id uuid not null,
+  role text not null check (role in ('user', 'assistant', 'system')),
+  content text not null,
+  status text not null default 'complete' check (status in ('queued', 'streaming', 'complete', 'failed')),
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, id),
+  foreign key (user_id, conversation_id) references user_conversations(user_id, id) on delete cascade,
+  check (length(btrim(content)) > 0)
+);
 ```

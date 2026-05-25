@@ -1,14 +1,29 @@
 # App Flows and View Map
 
 ## Mobile Primary Navigation (Bottom Tray)
-From left to right, mobile navigation should be:
+The mobile app uses a fixed bottom tray (always visible).  
+From left to right:
 
 1. Training
 2. Program
 3. Chat
 4. Account
 
-Note: Mobile label should use **Training** (not "Sessions") for the actionable day-to-day view.
+Route mapping:
+
+- `Training` -> `/training`
+- `Program` -> `/training/program`
+- `Chat` -> `/training/chat`
+- `Account` -> `/training/settings`
+
+## Desktop Sidebar Mapping
+Desktop navigation is grouped in the left sidebar as:
+
+- `Training` section
+- `Program` section
+- `Chat` section (recent chats)
+
+`User settings` is not a standalone sidebar section. It is accessed from the expandable user menu at the top of the sidebar.
 
 ## 1) Training View (Actionable)
 Purpose: This is the user's operational, day-to-day screen.
@@ -28,10 +43,10 @@ Primary user intent in this view:
 ## 2) Program View (Admin/Setup)
 Purpose: This is the planning and configuration area where users build and maintain their program.
 
-This category is subdivided into:
+Program is represented by a hub page at `/training/program`, which links to:
 
-- Session Library
-- Exercise Library
+- Session Builder (`/training/sessions`)
+- Exercise Library (`/training/exercises`)
 
 Primary user intent in this view:
 
@@ -55,10 +70,7 @@ Primary user intent in this view:
 ## 4) Account View
 Purpose: User settings and account management.
 
-Includes:
-
-- Profile/settings management.
-- Account-specific preferences and controls.
+Route: `/training/settings`
 
 Primary user intent in this view:
 

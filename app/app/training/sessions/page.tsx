@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 
+import { SessionBuilder } from "@/components/session-builder"
 import { TrainingShell } from "@/components/training-shell"
 import { createClient } from "@/lib/supabase/server"
 
@@ -14,10 +15,13 @@ export default async function TrainingSessionsPage() {
   }
 
   return (
-    <TrainingShell email={user.email ?? "Unknown email"} title="Session Builder">
-      <div className="text-sm text-muted-foreground">
-        Session builder page coming next.
-      </div>
+    <TrainingShell
+      email={user.email ?? "Unknown email"}
+      title="Sessions"
+      hideTitle
+      hideTitleOnMobile
+    >
+      <SessionBuilder />
     </TrainingShell>
   )
 }

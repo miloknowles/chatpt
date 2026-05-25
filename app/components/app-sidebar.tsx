@@ -3,8 +3,8 @@
 import * as React from "react"
 
 import { NavChat } from "@/components/nav-chat"
-import { NavLibrary } from "@/components/nav-library"
 import { NavMain } from "@/components/nav-main"
+import { NavProgram } from "@/components/nav-program"
 import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
@@ -15,7 +15,6 @@ import {
 import {
   CompassIcon,
   DumbbellIcon,
-  LibraryBigIcon,
   MessageSquareIcon,
   RouteIcon,
   ShieldCheckIcon,
@@ -101,18 +100,6 @@ const data = {
       ],
     },
   ],
-  library: [
-    {
-      title: "Exercises",
-      url: "/training/exercises",
-      icon: <LibraryBigIcon />,
-    },
-    {
-      title: "Session Builder",
-      url: "/training/sessions",
-      icon: <RouteIcon />,
-    },
-  ],
   chat: [
     {
       title: "Coach: Weekly Build",
@@ -167,7 +154,7 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavLibrary label="Program" items={data.library} />
+        <NavProgram />
         <NavChat items={data.chat} />
       </SidebarContent>
       <SidebarRail />
