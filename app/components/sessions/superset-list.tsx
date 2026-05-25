@@ -3,14 +3,18 @@
 import type { DragEvent } from "react"
 
 import { SupersetCard } from "./superset-card"
-import type { SupersetDropHandler, UserSuperset } from "./types"
+import type {
+  SupersetDropHandler,
+  UserLoggedExercise,
+  UserSuperset,
+} from "./types"
 
 type SupersetListProps = {
   supersets: UserSuperset[]
   isLoading: boolean
   draggedSupersetId: string | null
   dragOverSupersetId: string | null
-  supersetExerciseNames: Record<string, string[]>
+  loggedExercisesBySupersetId: Record<string, UserLoggedExercise[]>
   draftSupersetNames: Record<string, string>
   onSupersetDragStart: (
     event: DragEvent<HTMLElement>,
@@ -32,7 +36,7 @@ export function SupersetList({
   isLoading,
   draggedSupersetId,
   dragOverSupersetId,
-  supersetExerciseNames,
+  loggedExercisesBySupersetId,
   draftSupersetNames,
   onSupersetDragStart,
   onSupersetDragEnd,
@@ -57,7 +61,7 @@ export function SupersetList({
           <SupersetCard
             key={superset.id}
             superset={superset}
-            exerciseNames={supersetExerciseNames[superset.id] ?? []}
+            loggedExercises={loggedExercisesBySupersetId[superset.id] ?? []}
             draftName={
               draftSupersetNames[superset.id] ??
               superset.name ??

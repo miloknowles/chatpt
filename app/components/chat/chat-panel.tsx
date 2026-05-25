@@ -1,7 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { useUserConversations } from "@/hooks/use-user-conversations"
 import { useUserMessages } from "@/hooks/use-user-messages"
@@ -14,18 +13,17 @@ import { ChatMessageBubble } from "./chat-message-bubble"
 type ChatPanelProps = {
   variant?: "page" | "aside"
   recentConversationLimit?: number
+  selectedConversationId?: string | null
+  onSelectedConversationIdChange?: (conversationId: string) => void
 }
 
 export function ChatPanel({
   variant = "page",
   recentConversationLimit = 10,
+  selectedConversationId,
+  onSelectedConversationIdChange,
 }: ChatPanelProps) {
   const isAside = variant === "aside"
-  const pathname = usePathname()
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const isChatRoute = pathname === "/training/chat"
-  const conversationParam = searchParams.get("conversation")
   const [localConversationId, setLocalConversationId] = useState<string | null>(null)
   const [draftMessage, setDraftMessage] = useState("")
   const scrollAreaRef = useRef<HTMLDivElement>(null)
@@ -38,24 +36,16 @@ export function ChatPanel({
     createConversation,
     touchConversation,
   } = useUserConversations({ limit: recentConversationLimit })
-  const urlConversation = useMemo(
-    () =>
-      conversationParam
-        ? conversations.find((conversation) => conversation.id === conversationParam) ??
-        null
-        : null,
-    [conversationParam, conversations]
-  )
+  const activeConversationId = selectedConversationId ?? localConversationId
   const localConversation = useMemo(
     () =>
-      localConversationId
-        ? conversations.find((conversation) => conversation.id === localConversationId) ??
+      activeConversationId
+        ? conversations.find((conversation) => conversation.id === activeConversationId) ??
         null
         : null,
-    [conversations, localConversationId]
+    [activeConversationId, conversations]
   )
-  const selectedConversation =
-    (isChatRoute ? urlConversation : localConversation) ?? conversations[0] ?? null
+  const selectedConversation = localConversation ?? conversations[0] ?? null
   const {
     messages,
     isLoading: isLoadingMessages,
@@ -70,21 +60,9 @@ export function ChatPanel({
     conversationMutationError ??
     conversationError
 
-  const getConversationUrl = useCallback(
-    (conversationId: string) => {
-      const nextParams = new URLSearchParams(searchParams.toString())
-      nextParams.set("conversation", conversationId)
-      return `${pathname}?${nextParams.toString()}`
-    },
-    [pathname, searchParams]
-  )
-
   function selectConversation(conversationId: string) {
     setLocalConversationId(conversationId)
-
-    if (isChatRoute) {
-      router.replace(getConversationUrl(conversationId), { scroll: false })
-    }
+    onSelectedConversationIdChange?.(conversationId)
   }
 
   async function startNewChat() {
@@ -109,29 +87,6 @@ export function ChatPanel({
       await touchConversation(selectedConversation.id, trimmedMessage)
     }
   }
-
-  useEffect(() => {
-    if (conversations.length === 0) {
-      return
-    }
-
-    if (isChatRoute) {
-      const nextConversationId = urlConversation?.id ?? conversations[0].id
-
-      if (conversationParam !== nextConversationId) {
-        router.replace(getConversationUrl(nextConversationId), { scroll: false })
-      }
-
-      return
-    }
-  }, [
-    conversationParam,
-    conversations,
-    getConversationUrl,
-    isChatRoute,
-    router,
-    urlConversation,
-  ])
 
   useEffect(() => {
     const scrollArea = scrollAreaRef.current

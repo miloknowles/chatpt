@@ -10,6 +10,7 @@ This MCP server now uses **Streamable HTTP** in **stateless mode**, so it can ru
 ## Tools
 
 - `auth_info`
+- `update_user_metadata`
 - `list_user_sessions`
 - `create_user_session`
 - `list_user_exercises`
@@ -21,6 +22,10 @@ This MCP server now uses **Streamable HTTP** in **stateless mode**, so it can ru
 - `create_user_note`
 
 Each tool uses bearer auth from the request header (`Authorization: Bearer <token>`). The server verifies the user with Supabase and relies on RLS owner policies.
+
+### User metadata mutation design
+
+- `update_user_metadata`: updates authenticated Supabase Auth user metadata. Currently accepts `displayName` and stores it as `display_name`.
 
 ### Exercise library mutation design
 

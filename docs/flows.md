@@ -47,11 +47,13 @@ Program is represented by a hub page at `/training/program`, which links to:
 
 - Session Builder (`/training/sessions`)
 - Exercise Library (`/training/exercises`)
+- Profile (`/training/profile`)
 
 Primary user intent in this view:
 
 - Create and organize sessions.
 - Manage exercise definitions and metadata.
+- Maintain issues, qualities, and training priorities.
 - Configure program structure rather than execute a live session.
 
 ## 3) Chat View (Coach AI)

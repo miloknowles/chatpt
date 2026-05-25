@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { generateKeyBetween } from "fractional-indexing"
 
 import { useUserExercises } from "@/hooks/use-user-exercises"
+import { useUserLoggedExercises } from "@/hooks/use-user-logged-exercises"
 import { useUserSessions } from "@/hooks/use-user-sessions"
 import { useUserSupersets } from "@/hooks/use-user-supersets"
 
@@ -12,6 +13,7 @@ import { AddSupersetDialog } from "./add-superset-dialog"
 import { ExercisePalette } from "./exercise-palette"
 import { SessionDetails } from "./session-details"
 import { SupersetList } from "./superset-list"
+import type { UserExercise } from "./types"
 
 export function SessionBuilder() {
   const router = useRouter()
@@ -21,9 +23,6 @@ export function SessionBuilder() {
   const [draftName, setDraftName] = useState("")
   const [draftNotes, setDraftNotes] = useState("")
   const [exerciseSearchQuery, setExerciseSearchQuery] = useState("")
-  const [supersetExerciseNames, setSupersetExerciseNames] = useState<
-    Record<string, string[]>
-  >({})
   const [draftSupersetNames, setDraftSupersetNames] = useState<
     Record<string, string>
   >({})
@@ -64,6 +63,12 @@ export function SessionBuilder() {
     createSuperset,
     updateSuperset,
   } = useUserSupersets(selectedSession?.id)
+  const {
+    loggedExercises,
+    error: loggedExerciseError,
+    mutationError: loggedExerciseMutationError,
+    createLoggedExercise,
+  } = useUserLoggedExercises(selectedSession?.id)
 
   useEffect(() => {
     const syncTimer = window.setTimeout(() => {
@@ -167,6 +172,24 @@ export function SessionBuilder() {
     [supersets]
   )
 
+  const loggedExercisesBySupersetId = useMemo(() => {
+    return loggedExercises.reduce<Record<string, typeof loggedExercises>>(
+      (groups, loggedExercise) => {
+        if (!loggedExercise.superset_id) {
+          return groups
+        }
+
+        groups[loggedExercise.superset_id] = [
+          ...(groups[loggedExercise.superset_id] ?? []),
+          loggedExercise,
+        ]
+
+        return groups
+      },
+      {}
+    )
+  }, [loggedExercises])
+
   function handleSupersetDragStart(
     event: DragEvent<HTMLElement>,
     supersetId: string
@@ -178,26 +201,39 @@ export function SessionBuilder() {
 
   function handleExerciseDragStart(
     event: DragEvent<HTMLElement>,
-    exerciseName: string
+    exercise: UserExercise
   ) {
     event.dataTransfer.effectAllowed = "copy"
-    event.dataTransfer.setData("application/x-exercise-name", exerciseName)
+    event.dataTransfer.setData("application/x-exercise-id", exercise.id)
+    event.dataTransfer.setData("application/x-exercise-name", exercise.name)
   }
 
-  function addExerciseToSuperset(supersetId: string, exerciseName: string) {
-    setSupersetExerciseNames((currentExerciseNames) => ({
-      ...currentExerciseNames,
-      [supersetId]: [...(currentExerciseNames[supersetId] ?? []), exerciseName],
-    }))
+  async function addExerciseToSuperset(
+    supersetId: string,
+    exerciseId: string
+  ) {
+    if (!selectedSession) {
+      return
+    }
+
+    const lastSortKey =
+      loggedExercisesBySupersetId[supersetId]?.at(-1)?.sort_key ?? null
+
+    await createLoggedExercise({
+      sessionId: selectedSession.id,
+      supersetId,
+      exerciseId,
+      sortKey: generateKeyBetween(lastSortKey, null),
+    })
   }
 
   function handleSupersetDrop(
     event: DragEvent<HTMLElement>,
     targetSupersetId: string
   ) {
-    const exerciseName = event.dataTransfer.getData("application/x-exercise-name")
-    if (exerciseName) {
-      addExerciseToSuperset(targetSupersetId, exerciseName)
+    const exerciseId = event.dataTransfer.getData("application/x-exercise-id")
+    if (exerciseId) {
+      void addExerciseToSuperset(targetSupersetId, exerciseId)
       setDragOverSupersetId(null)
       return
     }
@@ -326,7 +362,7 @@ export function SessionBuilder() {
               isLoading={isSupersetLoading}
               draggedSupersetId={draggedSupersetId}
               dragOverSupersetId={dragOverSupersetId}
-              supersetExerciseNames={supersetExerciseNames}
+              loggedExercisesBySupersetId={loggedExercisesBySupersetId}
               draftSupersetNames={draftSupersetNames}
               onSupersetDragStart={handleSupersetDragStart}
               onSupersetDragEnd={() => {
@@ -335,7 +371,11 @@ export function SessionBuilder() {
               }}
               onSupersetDragOver={(event, supersetId) => {
                 event.preventDefault()
-                event.dataTransfer.dropEffect = "move"
+                event.dataTransfer.dropEffect = Array.from(
+                  event.dataTransfer.types
+                ).includes("application/x-exercise-id")
+                  ? "copy"
+                  : "move"
                 setDragOverSupersetId(supersetId)
               }}
               onSupersetDragLeave={() => setDragOverSupersetId(null)}
@@ -360,6 +400,12 @@ export function SessionBuilder() {
       {supersetError ? <p className="text-sm text-destructive">{supersetError}</p> : null}
       {supersetMutationError ? (
         <p className="text-sm text-destructive">{supersetMutationError}</p>
+      ) : null}
+      {loggedExerciseError ? (
+        <p className="text-sm text-destructive">{loggedExerciseError}</p>
+      ) : null}
+      {loggedExerciseMutationError ? (
+        <p className="text-sm text-destructive">{loggedExerciseMutationError}</p>
       ) : null}
 
       <AddSupersetDialog

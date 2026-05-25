@@ -10,6 +10,7 @@ import {
   PlusIcon,
   RouteIcon,
   Trash2Icon,
+  UserRoundIcon,
 } from "lucide-react"
 
 import { useUserSessions } from "@/hooks/use-user-sessions"
@@ -54,6 +55,7 @@ export function NavProgram() {
   const searchParams = useSearchParams()
   const selectedSessionId = searchParams.get("session")
   const isSessionsRoute = pathname.startsWith("/training/sessions")
+  const isProfileRoute = pathname.startsWith("/training/profile")
   const [sessionPendingDelete, setSessionPendingDelete] =
     useState<UserSession | null>(null)
   const {
@@ -124,6 +126,17 @@ export function NavProgram() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
+              tooltip="Profile"
+              isActive={isProfileRoute}
+              render={<a href="/training/profile" />}
+            >
+              <UserRoundIcon />
+              <span>Profile</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton
               tooltip="Exercises"
               isActive={pathname.startsWith("/training/exercises")}
               render={<a href="/training/exercises" />}
@@ -169,7 +182,7 @@ export function NavProgram() {
               </Button>
             </div>
             <CollapsibleContent>
-              <SidebarMenuSub>
+              <SidebarMenuSub className="mr-0 pr-0">
                 {isLoading ? (
                   <SidebarMenuSubItem>
                     <span className="px-2 text-xs text-sidebar-foreground/70">
@@ -186,14 +199,14 @@ export function NavProgram() {
                   sessions.map((session) => (
                     <SidebarMenuSubItem
                       key={session.id}
-                      className="flex w-full items-center gap-1"
+                      className="w-full"
                     >
                       <SidebarMenuSubButton
                         isActive={
                           isSessionsRoute &&
                           selectedSessionId === session.id
                         }
-                        className="min-w-0 flex-1"
+                        className="w-full pr-8"
                         render={<a href={`/training/sessions?session=${session.id}`} />}
                       >
                         <span>{session.name}</span>
@@ -205,7 +218,7 @@ export function NavProgram() {
                               type="button"
                               variant="ghost"
                               size="icon-xs"
-                              className="size-6 group-data-[collapsible=icon]:hidden"
+                              className="absolute top-0.5 right-0 size-6 group-data-[collapsible=icon]:hidden"
                               aria-label={`Actions for ${session.name}`}
                               disabled={isMutating}
                             />

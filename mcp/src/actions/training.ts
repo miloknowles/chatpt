@@ -7,6 +7,7 @@ import type {
   ListUserSessionsInput,
   LogUserExerciseInput,
   UpdateUserExerciseInput,
+  UpdateUserMetadataInput,
   UpdateUserQualityStatusInput,
   WhoAmIInput,
 } from "@chatpt/domain-contracts"
@@ -30,6 +31,31 @@ export async function whoAmI(_input: WhoAmIInput, accessToken: string) {
     user: {
       id: userId,
       email: user.email ?? null,
+      displayName: typeof metadataName === "string" ? metadataName : null,
+    },
+  }
+}
+
+export async function updateUserMetadata(
+  input: UpdateUserMetadataInput,
+  accessToken: string
+) {
+  const { supabase, userId } = await getAuthContext(accessToken)
+
+  const { data, error } = await supabase.auth.updateUser({
+    data: { display_name: input.displayName },
+  })
+
+  if (error || !data.user) {
+    throw new Error(error?.message ?? "Unable to update user metadata.")
+  }
+
+  const metadataName = data.user.user_metadata?.display_name
+
+  return {
+    user: {
+      id: userId,
+      email: data.user.email ?? null,
       displayName: typeof metadataName === "string" ? metadataName : null,
     },
   }

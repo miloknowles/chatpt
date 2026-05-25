@@ -3,6 +3,10 @@ import ws from "ws"
 
 import { getEnv } from "./env.js"
 
+type RealtimeTransport = NonNullable<
+  NonNullable<Parameters<typeof createClient>[2]>["realtime"]
+>["transport"]
+
 export interface AuthContext {
   supabase: SupabaseClient
   userId: string
@@ -23,7 +27,7 @@ export async function getAuthContext(accessToken: string): Promise<AuthContext> 
       detectSessionInUrl: false,
     },
     realtime: {
-      transport: ws,
+      transport: ws as RealtimeTransport,
     },
   })
 

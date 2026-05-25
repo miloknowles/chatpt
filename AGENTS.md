@@ -11,7 +11,7 @@ Primary context for this repository is in:
 
 ## Local Development Guidance
 
-- Do not start a new dev server if one is already running.
+- Do not start dev servers to test changes. If a dev server is already running, you may use that existing server for verification.
 - Do not run `yarn build` while the dev server is running; it can corrupt the active dev server state.
 
 ## Supabase Guidance

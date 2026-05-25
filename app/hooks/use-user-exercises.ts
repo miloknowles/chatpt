@@ -1,33 +1,27 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
+import { skipToken } from "@reduxjs/toolkit/query"
 
 import { useAuth } from "@/components/auth-provider"
-import { createClient } from "@/lib/supabase/client"
-import type { Database, Json } from "@/types/database"
+import {
+  useCreateExerciseMutation,
+  useDeleteExerciseMutation,
+  useGetExercisesQuery,
+  useGetExerciseTagsQuery,
+  useUpdateExerciseMutation,
+  type ExercisePayload,
+} from "@/lib/redux/training-api"
 
-type UserExercise = Database["public"]["Tables"]["user_exercises"]["Row"]
-
-type ExercisePayload = {
-  name: string
-  notes: string | null
-  image_url: string | null
-  video_url: string | null
-  tags: string[] | null
-  performance: Json | null
-}
+import {
+  getRtkErrorMessage,
+  getThrownErrorMessage,
+  type HookActionResult,
+} from "./rtk-query-utils"
 
 interface UseUserExercisesOptions {
   pageSize?: number
   searchQuery?: string
-}
-
-function getErrorMessage(error: { message: string } | null) {
-  if (!error) {
-    return "Unexpected error."
-  }
-
-  return error.message
 }
 
 export function useUserExercises({
@@ -35,246 +29,157 @@ export function useUserExercises({
   searchQuery = "",
 }: UseUserExercisesOptions = {}) {
   const { user, isLoading: isAuthLoading } = useAuth()
-  const supabase = useMemo(() => createClient(), [])
-  const normalizedSearchQuery = searchQuery.trim()
-
-  const [exercises, setExercises] = useState<UserExercise[]>([])
-  const [totalCount, setTotalCount] = useState(0)
-  const [availableTags, setAvailableTags] = useState<string[]>([])
   const [page, setPage] = useState(1)
-  const [isLoading, setIsLoading] = useState(false)
-  const [isMutating, setIsMutating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [mutationError, setMutationError] = useState<string | null>(null)
-
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
-
-  const loadExercises = useCallback(
-    async (requestedPage = page) => {
-      if (!user) {
-        setExercises([])
-        setTotalCount(0)
-        return
-      }
-
-      const normalizedPage = Math.max(1, requestedPage)
-      const start = (normalizedPage - 1) * pageSize
-      const end = start + pageSize - 1
-
-      setIsLoading(true)
-      setError(null)
-
-      let query = supabase
-        .from("user_exercises")
-        .select("*", { count: "exact" })
-        .eq("user_id", user.id)
-
-      if (normalizedSearchQuery) {
-        const wildcardQuery = `%${normalizedSearchQuery}%`
-        query = query.or(
-          `name.ilike.${wildcardQuery},notes.ilike.${wildcardQuery}`
-        )
-      }
-
-      const { data, count, error: queryError } = await query
-        .order("updated_at", { ascending: false })
-        .range(start, end)
-
-      setIsLoading(false)
-
-      if (queryError) {
-        setError(getErrorMessage(queryError))
-        return
-      }
-
-      setExercises(data ?? [])
-      setTotalCount(count ?? 0)
-    },
-    [normalizedSearchQuery, page, pageSize, supabase, user]
-  )
-
-  const loadAvailableTags = useCallback(async () => {
-    if (!user) {
-      setAvailableTags([])
-      return
-    }
-
-    const { data, error: tagsError } = await supabase
-      .from("user_exercises")
-      .select("tags")
-      .eq("user_id", user.id)
-      .not("tags", "is", null)
-
-    if (tagsError) {
-      return
-    }
-
-    const nextTags = Array.from(
-      new Set(
-        (data ?? [])
-          .flatMap((row) => row.tags ?? [])
-          .map((tag) => tag.trim())
-          .filter(Boolean)
-      )
-    ).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))
-
-    setAvailableTags(nextTags)
-  }, [supabase, user])
-
-  useEffect(() => {
-    if (isAuthLoading) {
-      return
-    }
-
-    const loadTimer = window.setTimeout(() => {
-      void loadExercises(page)
-      void loadAvailableTags()
-    }, 0)
-
-    return () => {
-      window.clearTimeout(loadTimer)
-    }
-  }, [isAuthLoading, loadAvailableTags, loadExercises, page])
-
-  useEffect(() => {
-    if (isAuthLoading || !user) {
-      return
-    }
-
-    const channelName = `user_exercises:${user.id}:${Math.random().toString(36).slice(2)}`
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "user_exercises",
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          void Promise.all([loadExercises(page), loadAvailableTags()])
+  const normalizedSearchQuery = searchQuery.trim()
+  const queryArgs =
+    user && !isAuthLoading
+      ? {
+          userId: user.id,
+          page,
+          pageSize,
+          searchQuery: normalizedSearchQuery,
         }
-      )
-      .subscribe()
+      : skipToken
+  const tagsArgs =
+    user && !isAuthLoading
+      ? {
+          userId: user.id,
+        }
+      : skipToken
 
-    return () => {
-      void supabase.removeChannel(channel)
-    }
-  }, [
-    isAuthLoading,
-    loadAvailableTags,
-    loadExercises,
-    page,
-    supabase,
-    user,
-  ])
+  const exercisesQuery = useGetExercisesQuery(queryArgs)
+  const tagsQuery = useGetExerciseTagsQuery(tagsArgs)
+  const [createExerciseMutation, createExerciseState] =
+    useCreateExerciseMutation()
+  const [updateExerciseMutation, updateExerciseState] =
+    useUpdateExerciseMutation()
+  const [deleteExerciseMutation, deleteExerciseState] =
+    useDeleteExerciseMutation()
+
+  const exercises = useMemo(
+    () => exercisesQuery.data?.exercises ?? [],
+    [exercisesQuery.data?.exercises]
+  )
+  const totalCount = exercisesQuery.data?.totalCount ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  const isMutating =
+    createExerciseState.isLoading ||
+    updateExerciseState.isLoading ||
+    deleteExerciseState.isLoading
+  const mutationError =
+    getRtkErrorMessage(createExerciseState.error) ??
+    getRtkErrorMessage(updateExerciseState.error) ??
+    getRtkErrorMessage(deleteExerciseState.error)
 
   const createExercise = useCallback(
-    async (payload: ExercisePayload) => {
+    async (payload: ExercisePayload): HookActionResult => {
       if (!user) {
         return { error: "You must be signed in." }
       }
 
-      setIsMutating(true)
-      setMutationError(null)
-
-      const { error: insertError } = await supabase.from("user_exercises").insert({
-        user_id: user.id,
-        ...payload,
-      })
-
-      setIsMutating(false)
-
-      if (insertError) {
-        const errorMessage = getErrorMessage(insertError)
-        setMutationError(errorMessage)
-        return { error: errorMessage }
+      try {
+        await createExerciseMutation({ userId: user.id, payload }).unwrap()
+        return {}
+      } catch (error) {
+        return { error: getThrownErrorMessage(error) }
       }
-
-      await Promise.all([loadExercises(page), loadAvailableTags()])
-      return {}
     },
-    [loadAvailableTags, loadExercises, page, supabase, user]
+    [createExerciseMutation, user]
   )
 
   const updateExercise = useCallback(
-    async (exerciseId: string, payload: ExercisePayload) => {
+    async (exerciseId: string, payload: ExercisePayload): HookActionResult => {
       if (!user) {
         return { error: "You must be signed in." }
       }
 
-      setIsMutating(true)
-      setMutationError(null)
-
-      const { error: updateError } = await supabase
-        .from("user_exercises")
-        .update(payload)
-        .eq("id", exerciseId)
-        .eq("user_id", user.id)
-
-      setIsMutating(false)
-
-      if (updateError) {
-        const errorMessage = getErrorMessage(updateError)
-        setMutationError(errorMessage)
-        return { error: errorMessage }
+      try {
+        await updateExerciseMutation({
+          userId: user.id,
+          exerciseId,
+          payload,
+        }).unwrap()
+        return {}
+      } catch (error) {
+        return { error: getThrownErrorMessage(error) }
       }
-
-      await Promise.all([loadExercises(page), loadAvailableTags()])
-      return {}
     },
-    [loadAvailableTags, loadExercises, page, supabase, user]
+    [updateExerciseMutation, user]
   )
 
   const deleteExercise = useCallback(
-    async (exerciseId: string) => {
+    async (exerciseId: string): HookActionResult => {
       if (!user) {
         return { error: "You must be signed in." }
       }
 
-      setIsMutating(true)
-      setMutationError(null)
-
-      const { error: deleteError } = await supabase
-        .from("user_exercises")
-        .delete()
-        .eq("id", exerciseId)
-        .eq("user_id", user.id)
-
-      setIsMutating(false)
-
-      if (deleteError) {
-        const errorMessage = getErrorMessage(deleteError)
-        setMutationError(errorMessage)
-        return { error: errorMessage }
+      try {
+        await deleteExerciseMutation({ userId: user.id, exerciseId }).unwrap()
+        const nextTotal = Math.max(0, totalCount - 1)
+        const nextPage = Math.min(
+          page,
+          Math.max(1, Math.ceil(nextTotal / pageSize))
+        )
+        setPage(nextPage)
+        return {}
+      } catch (error) {
+        return { error: getThrownErrorMessage(error) }
       }
-
-      const nextTotal = Math.max(0, totalCount - 1)
-      const nextPage = Math.min(page, Math.max(1, Math.ceil(nextTotal / pageSize)))
-      setPage(nextPage)
-      await Promise.all([loadExercises(nextPage), loadAvailableTags()])
-
-      return {}
     },
-    [loadAvailableTags, loadExercises, page, pageSize, supabase, totalCount, user]
+    [deleteExerciseMutation, page, pageSize, totalCount, user]
   )
 
-  return {
-    exercises,
-    availableTags,
-    totalCount,
-    page,
-    pageSize,
-    totalPages,
-    isLoading,
-    isMutating,
-    error,
-    mutationError,
-    setPage,
-    refresh: loadExercises,
-    createExercise,
-    updateExercise,
-    deleteExercise,
-  }
+  const refresh = useCallback(
+    async (requestedPage = page) => {
+      if (requestedPage !== page) {
+        setPage(Math.max(1, requestedPage))
+        return
+      }
+
+      await Promise.all([exercisesQuery.refetch(), tagsQuery.refetch()])
+    },
+    [exercisesQuery, page, tagsQuery]
+  )
+
+  return useMemo(
+    () => ({
+      exercises,
+      availableTags: tagsQuery.data ?? [],
+      totalCount,
+      page,
+      pageSize,
+      totalPages,
+      isLoading:
+        isAuthLoading || exercisesQuery.isFetching || tagsQuery.isFetching,
+      isMutating,
+      error:
+        getRtkErrorMessage(exercisesQuery.error) ??
+        getRtkErrorMessage(tagsQuery.error),
+      mutationError,
+      setPage,
+      refresh,
+      createExercise,
+      updateExercise,
+      deleteExercise,
+    }),
+    [
+      createExercise,
+      deleteExercise,
+      exercises,
+      exercisesQuery.error,
+      exercisesQuery.isFetching,
+      isAuthLoading,
+      isMutating,
+      mutationError,
+      page,
+      pageSize,
+      refresh,
+      tagsQuery.data,
+      tagsQuery.error,
+      tagsQuery.isFetching,
+      totalCount,
+      totalPages,
+      updateExercise,
+    ]
+  )
 }

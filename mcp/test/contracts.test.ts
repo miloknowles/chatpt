@@ -4,6 +4,7 @@ import {
   DeleteUserExerciseInputSchema,
   CreateUserSessionInputSchema,
   UpdateUserExerciseInputSchema,
+  UpdateUserMetadataInputSchema,
   UpdateUserQualityStatusInputSchema,
   WhoAmIInputSchema,
 } from "@chatpt/domain-contracts"
@@ -49,5 +50,13 @@ describe("domain contracts", () => {
   it("accepts an empty auth_info payload", () => {
     const parsed = WhoAmIInputSchema.parse({})
     expect(parsed).toEqual({})
+  })
+
+  it("normalizes a valid user metadata update payload", () => {
+    const parsed = UpdateUserMetadataInputSchema.parse({
+      displayName: "  Milo  ",
+    })
+
+    expect(parsed.displayName).toBe("Milo")
   })
 })

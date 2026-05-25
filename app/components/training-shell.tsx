@@ -11,6 +11,7 @@ import {
   RouteIcon,
   SettingsIcon,
   UserIcon,
+  UserRoundIcon,
 } from "lucide-react"
 
 import { AppSidebar } from "@/components/app-sidebar"
@@ -49,6 +50,8 @@ export function TrainingShell({
   const isMobile = useIsMobile()
   const { signOut, isLoading, user } = useAuth()
   const [isDesktopChatOpen, setIsDesktopChatOpen] = useState(false)
+  const [selectedChatConversationId, setSelectedChatConversationId] =
+    useState<string | null>(null)
   const effectiveEmail = user?.email ?? email
   const metadataDisplayName = user?.user_metadata?.display_name
   const displayName =
@@ -56,6 +59,8 @@ export function TrainingShell({
   const MobileHeaderIcon =
     pathname === "/training/exercises"
       ? LibraryBigIcon
+      : pathname === "/training/profile"
+        ? UserRoundIcon
       : pathname === "/training/program"
         ? LibraryBigIcon
         : pathname === "/training/sessions"
@@ -77,13 +82,8 @@ export function TrainingShell({
       isActive:
         pathname.startsWith("/training/program") ||
         pathname.startsWith("/training/sessions") ||
-        pathname.startsWith("/training/exercises"),
-    },
-    {
-      label: "Chat",
-      href: "/training/chat",
-      icon: MessageSquareIcon,
-      isActive: pathname.startsWith("/training/chat"),
+        pathname.startsWith("/training/exercises") ||
+        pathname.startsWith("/training/profile"),
     },
     {
       label: "Account",
@@ -154,6 +154,12 @@ export function TrainingShell({
         email={effectiveEmail}
         displayName={displayName}
         onSignOut={signOut}
+        onSelectChatConversation={(conversationId) => {
+          setSelectedChatConversationId(conversationId)
+          setIsDesktopChatOpen(true)
+        }}
+        selectedChatConversationId={selectedChatConversationId}
+        isChatOpen={isDesktopChatOpen}
         isSigningOut={isLoading}
       />
       <SidebarInset className="md:h-svh md:min-h-0 md:overflow-hidden">
@@ -200,7 +206,11 @@ export function TrainingShell({
                   {pageContent}
                 </div>
                 <aside className="flex h-full w-96 shrink-0 flex-col border-l bg-background xl:w-[28rem]">
-                  <ChatPanel variant="aside" />
+                  <ChatPanel
+                    variant="aside"
+                    selectedConversationId={selectedChatConversationId}
+                    onSelectedConversationIdChange={setSelectedChatConversationId}
+                  />
                 </aside>
               </>
             ) : (
@@ -216,7 +226,7 @@ export function TrainingShell({
           </section>
         </main>
         <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur md:hidden">
-          <div className="grid grid-cols-4 pb-[max(env(safe-area-inset-bottom),0.25rem)]">
+          <div className="grid grid-cols-3 pb-[max(env(safe-area-inset-bottom),0.25rem)]">
             {mobileNavItems.map((item) => {
               const Icon = item.icon
               return (

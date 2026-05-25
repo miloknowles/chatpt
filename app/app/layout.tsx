@@ -3,6 +3,8 @@ import "./globals.css";
 import { Inter, Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/components/auth-provider";
+import { DataRealtimeBridge } from "@/components/data-realtime-bridge";
+import { StoreProvider } from "@/components/store-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -39,7 +41,12 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider>
-            <AuthProvider>{children}</AuthProvider>
+            <StoreProvider>
+              <AuthProvider>
+                <DataRealtimeBridge />
+                {children}
+              </AuthProvider>
+            </StoreProvider>
           </TooltipProvider>
         </ThemeProvider>
       </body>

@@ -7,11 +7,15 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
-import type { SupersetDropHandler, UserSuperset } from "./types"
+import type {
+  SupersetDropHandler,
+  UserLoggedExercise,
+  UserSuperset,
+} from "./types"
 
 type SupersetCardProps = {
   superset: UserSuperset
-  exerciseNames: string[]
+  loggedExercises: UserLoggedExercise[]
   draftName: string
   isDragging: boolean
   isDragTarget: boolean
@@ -26,7 +30,7 @@ type SupersetCardProps = {
 
 export function SupersetCard({
   superset,
-  exerciseNames,
+  loggedExercises,
   draftName,
   isDragging,
   isDragTarget,
@@ -70,18 +74,18 @@ export function SupersetCard({
           aria-label="Superset name"
         />
         <div className="text-right text-xs font-medium text-muted-foreground">
-          {exerciseNames.length}{" "}
-          {exerciseNames.length === 1 ? "exercise" : "exercises"}
+          {loggedExercises.length}{" "}
+          {loggedExercises.length === 1 ? "exercise" : "exercises"}
         </div>
       </header>
-      {exerciseNames.length > 0 ? (
+      {loggedExercises.length > 0 ? (
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {exerciseNames.map((exerciseName, index) => (
+          {loggedExercises.map((loggedExercise) => (
             <div
-              key={`${superset.id}-${exerciseName}-${index}`}
+              key={loggedExercise.id}
               className="rounded-md border border-border/50 bg-muted/20 px-3 py-2 text-sm"
             >
-              {exerciseName}
+              {loggedExercise.exercise_name}
             </div>
           ))}
         </div>

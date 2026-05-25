@@ -1,181 +1,108 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useMemo } from "react"
+import { skipToken } from "@reduxjs/toolkit/query"
 
 import { useAuth } from "@/components/auth-provider"
-import { createClient } from "@/lib/supabase/client"
-import type { Database } from "@/types/database"
+import {
+  useCreateSupersetMutation,
+  useGetSupersetsQuery,
+  useUpdateSupersetMutation,
+  type SupersetCreatePayload,
+  type SupersetUpdatePayload,
+} from "@/lib/redux/training-api"
+import type { UserSuperset } from "@/types/database"
 
-type UserSuperset = Database["public"]["Tables"]["user_supersets"]["Row"]
-
-type SupersetCreatePayload = {
-  sessionId: string
-  name: string | null
-  sortKey: string
-}
-
-type SupersetUpdatePayload = {
-  name?: string | null
-  sort_key?: string
-}
-
-function getErrorMessage(error: { message: string } | null) {
-  if (!error) {
-    return "Unexpected error."
-  }
-
-  return error.message
-}
+import {
+  getRtkErrorMessage,
+  getThrownErrorMessage,
+  type HookActionResult,
+} from "./rtk-query-utils"
 
 export function useUserSupersets(sessionId: string | null | undefined) {
   const { user, isLoading: isAuthLoading } = useAuth()
-  const supabase = useMemo(() => createClient(), [])
-
-  const [supersets, setSupersets] = useState<UserSuperset[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [isMutating, setIsMutating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [mutationError, setMutationError] = useState<string | null>(null)
-
-  const loadSupersets = useCallback(async () => {
-    if (!user || !sessionId) {
-      setSupersets([])
-      return
-    }
-
-    setIsLoading(true)
-    setError(null)
-
-    const { data, error: queryError } = await supabase
-      .from("user_supersets")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("session_id", sessionId)
-      .order("sort_key", { ascending: true })
-
-    setIsLoading(false)
-
-    if (queryError) {
-      setError(getErrorMessage(queryError))
-      return
-    }
-
-    setSupersets(data ?? [])
-  }, [sessionId, supabase, user])
-
-  useEffect(() => {
-    if (isAuthLoading) {
-      return
-    }
-
-    const loadTimer = window.setTimeout(() => {
-      void loadSupersets()
-    }, 0)
-
-    return () => {
-      window.clearTimeout(loadTimer)
-    }
-  }, [isAuthLoading, loadSupersets])
-
-  useEffect(() => {
-    if (isAuthLoading || !user || !sessionId) {
-      return
-    }
-
-    const channelName = `user_supersets:${user.id}:${sessionId}:${Math.random()
-      .toString(36)
-      .slice(2)}`
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "user_supersets",
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          void loadSupersets()
+  const queryArgs =
+    user && !isAuthLoading && sessionId
+      ? {
+          userId: user.id,
+          sessionId,
         }
-      )
-      .subscribe()
+      : skipToken
+  const supersetsQuery = useGetSupersetsQuery(queryArgs)
+  const [createSupersetMutation, createSupersetState] =
+    useCreateSupersetMutation()
+  const [updateSupersetMutation, updateSupersetState] =
+    useUpdateSupersetMutation()
 
-    return () => {
-      void supabase.removeChannel(channel)
-    }
-  }, [isAuthLoading, loadSupersets, sessionId, supabase, user])
+  const isMutating =
+    createSupersetState.isLoading || updateSupersetState.isLoading
+  const mutationError =
+    getRtkErrorMessage(createSupersetState.error) ??
+    getRtkErrorMessage(updateSupersetState.error)
 
   const createSuperset = useCallback(
-    async ({ sessionId: targetSessionId, name, sortKey }: SupersetCreatePayload) => {
+    async (
+      payload: SupersetCreatePayload
+    ): HookActionResult<{ superset: UserSuperset }> => {
       if (!user) {
         return { error: "You must be signed in." }
       }
 
-      setIsMutating(true)
-      setMutationError(null)
-
-      const { data, error: insertError } = await supabase
-        .from("user_supersets")
-        .insert({
-          user_id: user.id,
-          session_id: targetSessionId,
-          name,
-          sort_key: sortKey,
-        })
-        .select("*")
-        .single()
-
-      setIsMutating(false)
-
-      if (insertError) {
-        const errorMessage = getErrorMessage(insertError)
-        setMutationError(errorMessage)
-        return { error: errorMessage }
+      try {
+        const superset = await createSupersetMutation({
+          userId: user.id,
+          payload,
+        }).unwrap()
+        return { superset }
+      } catch (error) {
+        return { error: getThrownErrorMessage(error) }
       }
-
-      await loadSupersets()
-      return { superset: data }
     },
-    [loadSupersets, supabase, user]
+    [createSupersetMutation, user]
   )
 
   const updateSuperset = useCallback(
-    async (supersetId: string, payload: SupersetUpdatePayload) => {
+    async (
+      supersetId: string,
+      payload: SupersetUpdatePayload
+    ): HookActionResult => {
       if (!user) {
         return { error: "You must be signed in." }
       }
 
-      setIsMutating(true)
-      setMutationError(null)
-
-      const { error: updateError } = await supabase
-        .from("user_supersets")
-        .update(payload)
-        .eq("id", supersetId)
-        .eq("user_id", user.id)
-
-      setIsMutating(false)
-
-      if (updateError) {
-        const errorMessage = getErrorMessage(updateError)
-        setMutationError(errorMessage)
-        return { error: errorMessage }
+      try {
+        await updateSupersetMutation({
+          userId: user.id,
+          supersetId,
+          payload,
+        }).unwrap()
+        return {}
+      } catch (error) {
+        return { error: getThrownErrorMessage(error) }
       }
-
-      await loadSupersets()
-      return {}
     },
-    [loadSupersets, supabase, user]
+    [updateSupersetMutation, user]
   )
 
-  return {
-    supersets,
-    isLoading,
-    isMutating,
-    error,
-    mutationError,
-    createSuperset,
-    updateSuperset,
-  }
+  return useMemo(
+    () => ({
+      supersets: supersetsQuery.data ?? [],
+      isLoading: isAuthLoading || supersetsQuery.isFetching,
+      isMutating,
+      error: getRtkErrorMessage(supersetsQuery.error),
+      mutationError,
+      createSuperset,
+      updateSuperset,
+    }),
+    [
+      createSuperset,
+      isAuthLoading,
+      isMutating,
+      mutationError,
+      supersetsQuery.data,
+      supersetsQuery.error,
+      supersetsQuery.isFetching,
+      updateSuperset,
+    ]
+  )
 }

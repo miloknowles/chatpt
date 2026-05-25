@@ -35,6 +35,15 @@ export default async function TrainingProgramPage() {
             Manage exercises, tags, media, and default prescriptions.
           </p>
         </Link>
+        <Link
+          href="/training/profile"
+          className="rounded-md border border-border/60 p-4 text-sm hover:bg-muted/40"
+        >
+          <p className="font-medium text-foreground">Profile</p>
+          <p className="mt-1 text-muted-foreground">
+            Maintain issues, qualities, and training priorities.
+          </p>
+        </Link>
       </div>
     </TrainingShell>
   )

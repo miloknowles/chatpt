@@ -47,19 +47,19 @@ export function MarketingLayout({ children }: MarketingLayoutProps) {
                 variant="secondary"
                 className="p-3"
               >
+                Connects to ChatGPT or Claude
+              </Badge>
+              <Badge
+                variant="secondary"
+                className="p-3"
+              >
                 Manage PT in one place
               </Badge>
               <Badge
                 variant="secondary"
                 className="p-3"
               >
-                Stay on track with AI guidance
-              </Badge>
-              <Badge
-                variant="secondary"
-                className="p-3"
-              >
-                Easy exercise tracking
+                Mobile-friendly for the gym
               </Badge>
             </div>
           </div>

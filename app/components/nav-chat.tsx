@@ -1,6 +1,5 @@
 "use client"
 
-import { usePathname, useSearchParams } from "next/navigation"
 import { ChevronRightIcon, MessageSquareIcon } from "lucide-react"
 
 import { useUserConversations } from "@/hooks/use-user-conversations"
@@ -20,11 +19,17 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 
-export function NavChat() {
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const selectedConversationId = searchParams.get("conversation")
-  const isChatRoute = pathname.startsWith("/training/chat")
+type NavChatProps = {
+  isChatOpen: boolean
+  selectedConversationId: string | null
+  onSelectConversation: (conversationId: string) => void
+}
+
+export function NavChat({
+  isChatOpen,
+  selectedConversationId,
+  onSelectConversation,
+}: NavChatProps) {
   const { conversations, isLoading, error } = useUserConversations({
     limit: 8,
     autoCreate: false,
@@ -35,7 +40,7 @@ export function NavChat() {
       <SidebarGroupLabel>Chat</SidebarGroupLabel>
       <SidebarMenu>
         <Collapsible
-          defaultOpen={isChatRoute}
+          defaultOpen
           className="group/collapsible"
           render={<SidebarMenuItem />}
         >
@@ -43,16 +48,16 @@ export function NavChat() {
             render={
               <SidebarMenuButton
                 tooltip="Chat"
-                isActive={isChatRoute}
+                isActive={isChatOpen}
               />
             }
           >
             <MessageSquareIcon />
-            <span>Chat</span>
+            <span>Conversations</span>
             <ChevronRightIcon className="ml-auto transition-transform duration-200 group-data-open/collapsible:rotate-90" />
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <SidebarMenuSub>
+            <SidebarMenuSub className="mr-0 pr-0">
               {isLoading ? (
                 <SidebarMenuSubItem>
                   <span className="px-2 text-xs text-sidebar-foreground/70">
@@ -76,11 +81,17 @@ export function NavChat() {
                   <SidebarMenuSubItem key={conversation.id}>
                     <SidebarMenuSubButton
                       isActive={
-                        isChatRoute &&
+                        isChatOpen &&
                         selectedConversationId === conversation.id
                       }
                       render={
-                        <a href={`/training/chat?conversation=${conversation.id}`} />
+                        <a
+                          href="#"
+                          onClick={(event) => {
+                            event.preventDefault()
+                            onSelectConversation(conversation.id)
+                          }}
+                        />
                       }
                     >
                       <span>{conversation.title}</span>

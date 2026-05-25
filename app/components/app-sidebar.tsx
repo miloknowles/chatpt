@@ -49,6 +49,9 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   email: string
   displayName?: string
   onSignOut: () => void
+  onSelectChatConversation: (conversationId: string) => void
+  selectedChatConversationId?: string | null
+  isChatOpen?: boolean
   isSigningOut?: boolean
 }
 
@@ -56,6 +59,9 @@ export function AppSidebar({
   email,
   displayName,
   onSignOut,
+  onSelectChatConversation,
+  selectedChatConversationId = null,
+  isChatOpen = false,
   isSigningOut = false,
   ...props
 }: AppSidebarProps) {
@@ -81,7 +87,11 @@ export function AppSidebar({
       <SidebarContent>
         <NavMain items={data.navMain} />
         <NavProgram />
-        <NavChat />
+        <NavChat
+          isChatOpen={isChatOpen}
+          selectedConversationId={selectedChatConversationId}
+          onSelectConversation={onSelectChatConversation}
+        />
       </SidebarContent>
       <SidebarRail />
     </Sidebar>

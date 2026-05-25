@@ -8,6 +8,10 @@ export const UserQualityStatusSchema = z.enum([
 
 export const WhoAmIInputSchema = z.object({})
 
+export const UpdateUserMetadataInputSchema = z.object({
+  displayName: z.string().trim().min(1).max(120),
+})
+
 const DateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 const TimestampSchema = z.string().datetime({ offset: true })
 
@@ -95,3 +99,4 @@ export type LogUserExerciseInput = z.infer<typeof LogUserExerciseInputSchema>
 export type UpdateUserQualityStatusInput = z.infer<typeof UpdateUserQualityStatusInputSchema>
 export type CreateUserNoteInput = z.infer<typeof CreateUserNoteInputSchema>
 export type WhoAmIInput = z.infer<typeof WhoAmIInputSchema>
+export type UpdateUserMetadataInput = z.infer<typeof UpdateUserMetadataInputSchema>

@@ -18,7 +18,7 @@ type ExercisePaletteProps = {
   onAddSuperset: () => void
   onExerciseDragStart: (
     event: DragEvent<HTMLElement>,
-    exerciseName: string
+    exercise: UserExercise
   ) => void
 }
 
@@ -66,7 +66,7 @@ export function ExercisePalette({
             <div
               key={exercise.id}
               draggable
-              onDragStart={(event) => onExerciseDragStart(event, exercise.name)}
+              onDragStart={(event) => onExerciseDragStart(event, exercise)}
               className="cursor-grab rounded-md border border-border/60 bg-background px-3 py-2 text-sm shadow-xs active:cursor-grabbing"
             >
               <div className="truncate font-medium">{exercise.name}</div>

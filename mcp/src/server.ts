@@ -8,6 +8,7 @@ import {
   ListUserExercisesInputSchema,
   ListUserSessionsInputSchema,
   LogUserExerciseInputSchema,
+  UpdateUserMetadataInputSchema,
   UpdateUserExerciseInputSchema,
   UpdateUserQualityStatusInputSchema,
   WhoAmIInputSchema,
@@ -21,6 +22,7 @@ import {
   listUserExercises,
   listUserSessions,
   logUserExercise,
+  updateUserMetadata,
   whoAmI,
   updateUserExercise,
   updateUserQualityStatus,
@@ -91,6 +93,21 @@ export function createTrainingMcpServer() {
       const input = WhoAmIInputSchema.parse(args)
       const accessToken = getAccessTokenFromExtra(extra)
       return asToolResult(await whoAmI(input, accessToken))
+    }
+  )
+
+  server.registerTool(
+    "update_user_metadata",
+    {
+      title: "Update User Metadata",
+      description:
+        "Update metadata for the authenticated user. Currently supports displayName.",
+      inputSchema: UpdateUserMetadataInputSchema,
+    },
+    async (args: unknown, extra: unknown) => {
+      const input = UpdateUserMetadataInputSchema.parse(args)
+      const accessToken = getAccessTokenFromExtra(extra)
+      return asToolResult(await updateUserMetadata(input, accessToken))
     }
   )
 
