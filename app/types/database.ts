@@ -12,10 +12,108 @@ export type UserIssueRelationshipType =
   | "downstream_of"
   | "related_to"
 export type UserQualityStatus = "building" | "maintaining" | "inactive"
+export type UserConversationStatus = "active" | "archived" | "deleted"
+export type UserMessageRole = "user" | "assistant" | "system"
+export type UserMessageStatus = "queued" | "streaming" | "complete" | "failed"
 
 export interface Database {
   public: {
     Tables: {
+      user_conversations: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          status: UserConversationStatus
+          summary: string | null
+          last_message_at: string | null
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title?: string
+          status?: UserConversationStatus
+          summary?: string | null
+          last_message_at?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          status?: UserConversationStatus
+          summary?: string | null
+          last_message_at?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_conversations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_messages: {
+        Row: {
+          id: string
+          user_id: string
+          conversation_id: string
+          role: UserMessageRole
+          content: string
+          status: UserMessageStatus
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          conversation_id: string
+          role: UserMessageRole
+          content: string
+          status?: UserMessageStatus
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          conversation_id?: string
+          role?: UserMessageRole
+          content?: string
+          status?: UserMessageStatus
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_messages_user_id_conversation_id_fkey"
+            columns: ["user_id", "conversation_id"]
+            isOneToOne: false
+            referencedRelation: "user_conversations"
+            referencedColumns: ["user_id", "id"]
+          },
+        ]
+      }
       user_issues: {
         Row: {
           id: string
@@ -476,6 +574,14 @@ export type TableName = keyof PublicTables
 export type TableRow<T extends TableName> = PublicTables[T]["Row"]
 export type TableInsert<T extends TableName> = PublicTables[T]["Insert"]
 export type TableUpdate<T extends TableName> = PublicTables[T]["Update"]
+
+export type UserConversation = TableRow<"user_conversations">
+export type UserConversationInsert = TableInsert<"user_conversations">
+export type UserConversationUpdate = TableUpdate<"user_conversations">
+
+export type UserMessage = TableRow<"user_messages">
+export type UserMessageInsert = TableInsert<"user_messages">
+export type UserMessageUpdate = TableUpdate<"user_messages">
 
 export type UserIssue = TableRow<"user_issues">
 export type UserIssueInsert = TableInsert<"user_issues">
