@@ -10,11 +10,9 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-export function NavLibrary({
-  label = "Library",
+export function NavChat({
   items,
 }: {
-  label?: string
   items: {
     title: string
     url: string
@@ -23,13 +21,13 @@ export function NavLibrary({
 }) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      <SidebarGroupLabel>Chat</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
           <SidebarMenuItem key={item.title}>
             <SidebarMenuButton tooltip={item.title} render={<a href={item.url} />}>
               {item.icon}
-              <span>{item.title}</span>
+              <span className="truncate">{item.title}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         ))}

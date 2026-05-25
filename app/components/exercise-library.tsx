@@ -47,12 +47,6 @@ import { useUserExercises } from "@/hooks/use-user-exercises"
 import type { Database, Json } from "@/types/database"
 
 type UserExercise = Database["public"]["Tables"]["user_exercises"]["Row"]
-type PerformanceMode = "sets_reps" | "custom"
-
-type SetRow = {
-  reps: string
-  weight: string
-}
 
 type ExerciseFormValues = {
   name: string
@@ -60,8 +54,6 @@ type ExerciseFormValues = {
   imageUrl: string
   videoUrl: string
   tags: string[]
-  performanceMode: PerformanceMode
-  performanceSets: SetRow[]
   performanceText: string
 }
 
@@ -71,20 +63,13 @@ const EMPTY_FORM_VALUES: ExerciseFormValues = {
   imageUrl: "",
   videoUrl: "",
   tags: [],
-  performanceMode: "sets_reps",
-  performanceSets: [{ reps: "", weight: "" }],
   performanceText: "",
 }
 
 function parsePerformanceToFormValues(
   performance: Json | null
-): Pick<ExerciseFormValues, "performanceMode" | "performanceSets" | "performanceText"> {
-  const emptyValues: Pick<
-    ExerciseFormValues,
-    "performanceMode" | "performanceSets" | "performanceText"
-  > = {
-    performanceMode: "sets_reps" as const,
-    performanceSets: [{ reps: "", weight: "" }],
+): Pick<ExerciseFormValues, "performanceText"> {
+  const emptyValues: Pick<ExerciseFormValues, "performanceText"> = {
     performanceText: "",
   }
 
@@ -95,7 +80,6 @@ function parsePerformanceToFormValues(
   if (typeof performance === "string") {
     return {
       ...emptyValues,
-      performanceMode: "custom",
       performanceText: performance,
     }
   }
@@ -128,12 +112,23 @@ function parsePerformanceToFormValues(
 
           return { reps, weight }
         })
-        .filter((row): row is SetRow => row !== null)
+        .filter((row): row is { reps: string; weight: string } => row !== null)
+
+      const text = rows
+        .map((row) => {
+          if (row.reps && row.weight) {
+            return `${row.reps} reps @ ${row.weight}`
+          }
+          if (row.reps) {
+            return `${row.reps} reps`
+          }
+          return `Weight: ${row.weight}`
+        })
+        .join("\n")
 
       return {
         ...emptyValues,
-        performanceMode: "sets_reps",
-        performanceSets: rows.length ? rows : emptyValues.performanceSets,
+        performanceText: text,
       }
     }
 
@@ -145,7 +140,6 @@ function parsePerformanceToFormValues(
     ) {
       return {
         ...emptyValues,
-        performanceMode: "custom",
         performanceText: `Duration: ${durationSecondsValue / 60} minutes`,
       }
     }
@@ -158,7 +152,6 @@ function parsePerformanceToFormValues(
     ) {
       return {
         ...emptyValues,
-        performanceMode: "custom",
         performanceText: `Duration: ${durationMinutesValue} minutes`,
       }
     }
@@ -167,7 +160,6 @@ function parsePerformanceToFormValues(
     if (typeof textValue === "string") {
       return {
         ...emptyValues,
-        performanceMode: "custom",
         performanceText: textValue,
       }
     }
@@ -175,7 +167,6 @@ function parsePerformanceToFormValues(
 
   return {
     ...emptyValues,
-    performanceMode: "custom",
     performanceText: JSON.stringify(performance, null, 2),
   }
 }
@@ -206,60 +197,11 @@ function toPayload(values: ExerciseFormValues) {
 
   let performance: Json | null = null
 
-  if (values.performanceMode === "sets_reps") {
-    const parsedSets = values.performanceSets
-      .map((setRow) => {
-        const repsRaw = setRow.reps.trim()
-        const weightRaw = setRow.weight.trim()
-
-        const reps = Number(repsRaw)
-        const weight = weightRaw ? Number(weightRaw) : null
-
-        if (!repsRaw && !weightRaw) {
-          return null
-        }
-
-        if (!Number.isFinite(reps) || reps <= 0) {
-          return { error: "Each set needs a valid reps value greater than 0." }
-        }
-
-        if (weightRaw && (!Number.isFinite(weight) || (weight ?? 0) < 0)) {
-          return { error: "Weight must be a valid number at least 0." }
-        }
-
-        return {
-          reps,
-          ...(weightRaw ? { weight } : {}),
-        }
-      })
-      .filter((entry) => entry !== null)
-
-    const setParseError = parsedSets.find(
-      (entry): entry is { error: string } =>
-        typeof entry === "object" && entry !== null && "error" in entry
-    )
-
-    if (setParseError) {
-      return { error: setParseError.error }
-    }
-
-    const cleanSets = parsedSets as { reps: number; weight?: number | null }[]
-
-    if (cleanSets.length > 0) {
-      performance = {
-        type: "sets_reps",
-        sets: cleanSets,
-      }
-    }
-  }
-
-  if (values.performanceMode === "custom") {
-    const text = values.performanceText.trim()
-    if (text) {
-      performance = {
-        type: "custom",
-        text,
-      }
+  const text = values.performanceText.trim()
+  if (text) {
+    performance = {
+      type: "custom",
+      text,
     }
   }
 
@@ -388,7 +330,7 @@ function TagMultiSelect({
       {values.length > 0 ? (
         <div className="flex flex-wrap gap-1">
           {values.map((tag) => (
-            <Badge key={tag} variant="outline">
+            <Badge key={tag} variant="secondary">
               {tag}
             </Badge>
           ))}
@@ -549,35 +491,6 @@ export function ExerciseLibrary() {
     }))
   }
 
-  function addSetRow() {
-    setFormValues((current) => ({
-      ...current,
-      performanceSets: [...current.performanceSets, { reps: "", weight: "" }],
-    }))
-  }
-
-  function removeSetRow(indexToRemove: number) {
-    setFormValues((current) => {
-      const nextRows = current.performanceSets.filter(
-        (_row, index) => index !== indexToRemove
-      )
-
-      return {
-        ...current,
-        performanceSets: nextRows.length ? nextRows : [{ reps: "", weight: "" }],
-      }
-    })
-  }
-
-  function updateSetRow(indexToUpdate: number, nextRow: SetRow) {
-    setFormValues((current) => ({
-      ...current,
-      performanceSets: current.performanceSets.map((row, index) =>
-        index === indexToUpdate ? nextRow : row
-      ),
-    }))
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setFormError(null)
@@ -651,12 +564,11 @@ export function ExerciseLibrary() {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button
-            className="h-9 rounded-full shadow-md sm:rounded-md sm:shadow-none"
+            className="h-10 w-10 rounded-full shadow-lg"
             onClick={openCreateSheet}
-            aria-label="Add Exercise"
+            aria-label="Create Exercise"
           >
             <PlusIcon />
-            <span className="hidden sm:inline">Add Exercise</span>
           </Button>
         </div>
       </div>
@@ -692,14 +604,14 @@ export function ExerciseLibrary() {
           </div>
         ) : (
           exercises.map((exercise) => {
-          const hasImage = Boolean(exercise.image_url)
-          const hasVideo = Boolean(exercise.video_url)
-          const videoThumbnailUrl = exercise.video_url
-            ? getVideoThumbnailUrl(exercise.video_url)
-            : null
+            const hasImage = Boolean(exercise.image_url)
+            const hasVideo = Boolean(exercise.video_url)
+            const videoThumbnailUrl = exercise.video_url
+              ? getVideoThumbnailUrl(exercise.video_url)
+              : null
 
-          return (
-            <article key={exercise.id} className="space-y-3 rounded-md border border-border/60 p-4">
+            return (
+              <article key={exercise.id} className="space-y-3 rounded-md border border-border/60 p-4">
                 <div>
                   <h3 className="font-medium text-foreground">{exercise.name}</h3>
                   {exercise.notes ? (
@@ -709,62 +621,62 @@ export function ExerciseLibrary() {
                   ) : null}
                 </div>
 
-              {hasImage || hasVideo ? (
-                <div className="space-y-2 text-xs">
-                  {hasImage ? (
-                    <div className="space-y-1">
-                      <a
-                        href={exercise.image_url ?? "#"}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block w-fit overflow-hidden rounded-md border border-border/60"
-                      >
-                        <img
-                          src={exercise.image_url ?? ""}
-                          alt={`${exercise.name} image`}
-                          className="h-14 w-24 object-cover"
-                          loading="lazy"
-                        />
-                      </a>
-                      <a
-                        href={exercise.image_url ?? "#"}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block text-primary underline-offset-4 hover:underline"
-                      >
-                        Image
-                      </a>
-                    </div>
-                  ) : null}
-                  {hasVideo ? (
-                    <div className="space-y-1">
-                      {videoThumbnailUrl ? (
+                {hasImage || hasVideo ? (
+                  <div className="space-y-2 text-xs">
+                    {hasImage ? (
+                      <div className="space-y-1">
                         <a
-                          href={exercise.video_url ?? "#"}
+                          href={exercise.image_url ?? "#"}
                           target="_blank"
                           rel="noreferrer"
                           className="block w-fit overflow-hidden rounded-md border border-border/60"
                         >
                           <img
-                            src={videoThumbnailUrl}
-                            alt={`${exercise.name} video preview`}
+                            src={exercise.image_url ?? ""}
+                            alt={`${exercise.name} image`}
                             className="h-14 w-24 object-cover"
                             loading="lazy"
                           />
                         </a>
-                      ) : null}
-                      <a
-                        href={exercise.video_url ?? "#"}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block text-primary underline-offset-4 hover:underline"
-                      >
-                        Video
-                      </a>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
+                        <a
+                          href={exercise.image_url ?? "#"}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block text-primary underline-offset-4 hover:underline"
+                        >
+                          Image
+                        </a>
+                      </div>
+                    ) : null}
+                    {hasVideo ? (
+                      <div className="space-y-1">
+                        {videoThumbnailUrl ? (
+                          <a
+                            href={exercise.video_url ?? "#"}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block w-fit overflow-hidden rounded-md border border-border/60"
+                          >
+                            <img
+                              src={videoThumbnailUrl}
+                              alt={`${exercise.name} video preview`}
+                              className="h-14 w-24 object-cover"
+                              loading="lazy"
+                            />
+                          </a>
+                        ) : null}
+                        <a
+                          href={exercise.video_url ?? "#"}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block text-primary underline-offset-4 hover:underline"
+                        >
+                          Video
+                        </a>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 <div className="flex items-end justify-between gap-2 pt-1">
                   <div className="flex flex-wrap gap-1">
@@ -1077,7 +989,7 @@ export function ExerciseLibrary() {
                   id="exercise-notes"
                   value={formValues.notes}
                   onChange={(event) => handleFieldChange("notes", event.target.value)}
-                  placeholder="Form cues, contraindications, setup reminders..."
+                  placeholder="Add cues and notes for yourself"
                 />
               </div>
 
@@ -1117,91 +1029,16 @@ export function ExerciseLibrary() {
               </div>
 
               <div className="space-y-2">
-                <Label>Default Prescription</Label>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <Button
-                    type="button"
-                    variant={
-                      formValues.performanceMode === "sets_reps"
-                        ? "default"
-                        : "outline"
-                    }
-                    onClick={() =>
-                      handleFieldChange("performanceMode", "sets_reps")
-                    }
-                  >
-                    Sets × Reps
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={
-                      formValues.performanceMode === "custom" ? "default" : "outline"
-                    }
-                    onClick={() => handleFieldChange("performanceMode", "custom")}
-                  >
-                    Custom
-                  </Button>
-                </div>
-
-                {formValues.performanceMode === "sets_reps" ? (
-                  <div className="space-y-2 rounded-md border border-border/60 p-3">
-                    {formValues.performanceSets.map((setRow, index) => (
-                      <div key={index} className="grid grid-cols-12 gap-2">
-                        <Input
-                          type="number"
-                          min={1}
-                          className="col-span-5"
-                          placeholder="Reps"
-                          value={setRow.reps}
-                          onChange={(event) =>
-                            updateSetRow(index, {
-                              ...setRow,
-                              reps: event.target.value,
-                            })
-                          }
-                        />
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.5"
-                          className="col-span-5"
-                          placeholder="Weight (optional)"
-                          value={setRow.weight}
-                          onChange={(event) =>
-                            updateSetRow(index, {
-                              ...setRow,
-                              weight: event.target.value,
-                            })
-                          }
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          className="col-span-2"
-                          onClick={() => removeSetRow(index)}
-                          aria-label={`Remove set ${index + 1}`}
-                        >
-                          <Trash2Icon />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button type="button" variant="outline" onClick={addSetRow}>
-                      Add Set
-                    </Button>
-                  </div>
-                ) : null}
-
-                {formValues.performanceMode === "custom" ? (
-                  <Textarea
-                    value={formValues.performanceText}
-                    onChange={(event) =>
-                      handleFieldChange("performanceText", event.target.value)
-                    }
-                    placeholder="Any unstructured performance notes..."
-                    className="min-h-24"
-                  />
-                ) : null}
+                <Label htmlFor="exercise-default-set">Suggested Program</Label>
+                <Textarea
+                  id="exercise-suggested-program"
+                  value={formValues.performanceText}
+                  onChange={(event) =>
+                    handleFieldChange("performanceText", event.target.value)
+                  }
+                  placeholder="Sets, reps, weight, duration"
+                  className="min-h-24"
+                />
               </div>
             </div>
 

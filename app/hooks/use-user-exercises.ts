@@ -136,6 +136,39 @@ export function useUserExercises({
     }
   }, [isAuthLoading, loadAvailableTags, loadExercises, page])
 
+  useEffect(() => {
+    if (isAuthLoading || !user) {
+      return
+    }
+
+    const channel = supabase
+      .channel(`user_exercises:${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "user_exercises",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          void Promise.all([loadExercises(page), loadAvailableTags()])
+        }
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [
+    isAuthLoading,
+    loadAvailableTags,
+    loadExercises,
+    page,
+    supabase,
+    user,
+  ])
+
   const createExercise = useCallback(
     async (payload: ExercisePayload) => {
       if (!user) {

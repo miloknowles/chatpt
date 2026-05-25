@@ -2,6 +2,7 @@
 
 import * as React from "react"
 
+import { NavChat } from "@/components/nav-chat"
 import { NavLibrary } from "@/components/nav-library"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -15,6 +16,7 @@ import {
   CompassIcon,
   DumbbellIcon,
   LibraryBigIcon,
+  MessageSquareIcon,
   RouteIcon,
   ShieldCheckIcon,
 } from "lucide-react"
@@ -111,6 +113,23 @@ const data = {
       icon: <RouteIcon />,
     },
   ],
+  chat: [
+    {
+      title: "Coach: Weekly Build",
+      url: "/training/chat?thread=weekly-build",
+      icon: <MessageSquareIcon />,
+    },
+    {
+      title: "Adjust Tomorrow Session",
+      url: "/training/chat?thread=adjust-tomorrow",
+      icon: <MessageSquareIcon />,
+    },
+    {
+      title: "Recovery Check-in",
+      url: "/training/chat?thread=recovery-checkin",
+      icon: <MessageSquareIcon />,
+    },
+  ],
 }
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -148,7 +167,8 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavLibrary items={data.library} />
+        <NavLibrary label="Program" items={data.library} />
+        <NavChat items={data.chat} />
       </SidebarContent>
       <SidebarRail />
     </Sidebar>
