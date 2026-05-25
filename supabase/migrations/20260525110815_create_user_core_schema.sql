@@ -1,28 +1,15 @@
-# Supabase Schema (Draft)
+create extension if not exists pgcrypto;
 
-## Modeling decisions
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
 
-- Naming split:
-  - `library_*` tables are reusable system-provided templates/canonical definitions.
-  - `user_*` tables are user-owned data.
-- No bridge tables for now:
-  - Users copy records from `library_*` into their own `user_*` space.
-  - This keeps v1 simple and avoids linked-install/update complexity.
-- Provenance:
-  - User tables may include optional `source_library_*_id` columns later to track where a copy came from.
-  - These are for attribution/reference only, not live linkage.
-- Mutability:
-  - `user_*` rows are mutable.
-  - Users can edit notes, adjust sets/reps/performance, reorder items, and otherwise update records over time.
-  - We are not enforcing immutable historical snapshots in v1.
-- Timestamp behavior:
-  - Tables with `updated_at` should use a shared `before update` trigger in migrations so `updated_at` is always current.
-- Library metadata columns:
-  - `library_*` tables should include `publish_status text not null check (publish_status in ('draft', 'active', 'deleted'))`.
-  - `library_*` tables should include `version int not null default 1`.
-  - No `slug` column for now.
-
-```sql
 -- Issues: what's wrong or being managed
 create table user_issues (
   id uuid primary key default gen_random_uuid(),
@@ -58,10 +45,10 @@ create table user_qualities (
   user_id uuid references auth.users on delete cascade not null,
   name text not null,
   notes text,
-  body_region text, -- unstructured text field for now
+  body_region text,
   status text not null check (status in ('building', 'maintaining', 'inactive')),
-  training_frequency_target text, -- "daily", "3x_week", "2x_week", etc.
-  training_goal text, -- when is this quality "enough"?
+  training_frequency_target text,
+  training_goal text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (user_id, id),
@@ -85,11 +72,11 @@ create table user_exercises (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users on delete cascade not null,
   name text not null,
-  notes text, -- can include cues or instructions
-  image_url text, -- optional, used as a preview image for the exercise
-  video_url text, -- optional, used to provide instructions or demos
-  tags text[], -- optional, used to categorize the exercise
-  performance jsonb, -- default/prescribed: { sets: [{reps: 10, weight: 50}, ...], duration_s: 60, notes: "..." }
+  notes text,
+  image_url text,
+  video_url text,
+  tags text[],
+  performance jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (user_id, id),
@@ -101,9 +88,9 @@ create table user_sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users on delete cascade not null,
   name text not null,
-  estimated_duration_mins integer, -- optional
+  estimated_duration_mins integer,
   date date not null default current_date,
-  type text not null, -- "mobility", "strength", "speed_work", "form_drills", "other"
+  type text not null,
   notes text,
   started_at timestamptz,
   completed_at timestamptz,
@@ -119,7 +106,7 @@ create table user_supersets (
   user_id uuid references auth.users on delete cascade not null,
   session_id uuid not null,
   name text,
-  sort_key text not null, -- collisions are allowed
+  sort_key text not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (user_id, id),
@@ -132,11 +119,11 @@ create table user_logged_exercises (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users on delete cascade not null,
   session_id uuid not null,
-  superset_id uuid, -- nullable; null = standalone
+  superset_id uuid,
   exercise_id uuid not null,
-  sort_key text not null, -- collisions are allowed
+  sort_key text not null,
   completed_at timestamptz,
-  performance jsonb, -- actual performed: { sets: [{reps: 10, weight: 50}, ...], duration_s: 60, notes: "..." }
+  performance jsonb,
   notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -155,4 +142,39 @@ create table user_notes (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-```
+
+create trigger set_updated_at_user_issues
+before update on user_issues
+for each row execute function public.set_updated_at();
+
+create trigger set_updated_at_user_issue_relationships
+before update on user_issue_relationships
+for each row execute function public.set_updated_at();
+
+create trigger set_updated_at_user_qualities
+before update on user_qualities
+for each row execute function public.set_updated_at();
+
+create trigger set_updated_at_user_issue_quality_relationships
+before update on user_issue_quality_relationships
+for each row execute function public.set_updated_at();
+
+create trigger set_updated_at_user_exercises
+before update on user_exercises
+for each row execute function public.set_updated_at();
+
+create trigger set_updated_at_user_sessions
+before update on user_sessions
+for each row execute function public.set_updated_at();
+
+create trigger set_updated_at_user_supersets
+before update on user_supersets
+for each row execute function public.set_updated_at();
+
+create trigger set_updated_at_user_logged_exercises
+before update on user_logged_exercises
+for each row execute function public.set_updated_at();
+
+create trigger set_updated_at_user_notes
+before update on user_notes
+for each row execute function public.set_updated_at();
