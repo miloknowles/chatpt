@@ -1,0 +1,517 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type UserIssueStatus = "active" | "resolved"
+export type UserIssueRelationshipType =
+  | "upstream_of"
+  | "downstream_of"
+  | "related_to"
+export type UserQualityStatus = "building" | "maintaining" | "inactive"
+
+export interface Database {
+  public: {
+    Tables: {
+      user_issues: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          notes: string | null
+          status: UserIssueStatus
+          first_noted_at: string
+          last_noted_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          notes?: string | null
+          status: UserIssueStatus
+          first_noted_at?: string
+          last_noted_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          notes?: string | null
+          status?: UserIssueStatus
+          first_noted_at?: string
+          last_noted_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_issues_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_issue_relationships: {
+        Row: {
+          user_id: string
+          issue_id: string
+          related_issue_id: string
+          relationship: UserIssueRelationshipType
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          issue_id: string
+          related_issue_id: string
+          relationship: UserIssueRelationshipType
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          issue_id?: string
+          related_issue_id?: string
+          relationship?: UserIssueRelationshipType
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_issue_relationships_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_issue_relationships_user_id_issue_id_fkey"
+            columns: ["user_id", "issue_id"]
+            isOneToOne: false
+            referencedRelation: "user_issues"
+            referencedColumns: ["user_id", "id"]
+          },
+          {
+            foreignKeyName:
+              "user_issue_relationships_user_id_related_issue_id_fkey"
+            columns: ["user_id", "related_issue_id"]
+            isOneToOne: false
+            referencedRelation: "user_issues"
+            referencedColumns: ["user_id", "id"]
+          },
+        ]
+      }
+      user_qualities: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          notes: string | null
+          body_region: string | null
+          status: UserQualityStatus
+          training_frequency_target: string | null
+          training_goal: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          notes?: string | null
+          body_region?: string | null
+          status: UserQualityStatus
+          training_frequency_target?: string | null
+          training_goal?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          notes?: string | null
+          body_region?: string | null
+          status?: UserQualityStatus
+          training_frequency_target?: string | null
+          training_goal?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_qualities_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_issue_quality_relationships: {
+        Row: {
+          user_id: string
+          issue_id: string
+          quality_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          issue_id: string
+          quality_id: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          issue_id?: string
+          quality_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_issue_quality_relationships_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName:
+              "user_issue_quality_relationships_user_id_issue_id_fkey"
+            columns: ["user_id", "issue_id"]
+            isOneToOne: false
+            referencedRelation: "user_issues"
+            referencedColumns: ["user_id", "id"]
+          },
+          {
+            foreignKeyName:
+              "user_issue_quality_relationships_user_id_quality_id_fkey"
+            columns: ["user_id", "quality_id"]
+            isOneToOne: false
+            referencedRelation: "user_qualities"
+            referencedColumns: ["user_id", "id"]
+          },
+        ]
+      }
+      user_exercises: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          notes: string | null
+          image_url: string | null
+          video_url: string | null
+          tags: string[] | null
+          performance: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          notes?: string | null
+          image_url?: string | null
+          video_url?: string | null
+          tags?: string[] | null
+          performance?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          notes?: string | null
+          image_url?: string | null
+          video_url?: string | null
+          tags?: string[] | null
+          performance?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_exercises_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_sessions: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          estimated_duration_mins: number | null
+          date: string
+          type: string
+          notes: string | null
+          started_at: string | null
+          completed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          estimated_duration_mins?: number | null
+          date?: string
+          type: string
+          notes?: string | null
+          started_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          estimated_duration_mins?: number | null
+          date?: string
+          type?: string
+          notes?: string | null
+          started_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_supersets: {
+        Row: {
+          id: string
+          user_id: string
+          session_id: string
+          name: string | null
+          sort_key: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          session_id: string
+          name?: string | null
+          sort_key: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          session_id?: string
+          name?: string | null
+          sort_key?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_supersets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_supersets_user_id_session_id_fkey"
+            columns: ["user_id", "session_id"]
+            isOneToOne: false
+            referencedRelation: "user_sessions"
+            referencedColumns: ["user_id", "id"]
+          },
+        ]
+      }
+      user_logged_exercises: {
+        Row: {
+          id: string
+          user_id: string
+          session_id: string
+          superset_id: string | null
+          exercise_id: string
+          sort_key: string
+          completed_at: string | null
+          performance: Json | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          session_id: string
+          superset_id?: string | null
+          exercise_id: string
+          sort_key: string
+          completed_at?: string | null
+          performance?: Json | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          session_id?: string
+          superset_id?: string | null
+          exercise_id?: string
+          sort_key?: string
+          completed_at?: string | null
+          performance?: Json | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_logged_exercises_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_logged_exercises_user_id_session_id_fkey"
+            columns: ["user_id", "session_id"]
+            isOneToOne: false
+            referencedRelation: "user_sessions"
+            referencedColumns: ["user_id", "id"]
+          },
+          {
+            foreignKeyName: "user_logged_exercises_user_id_exercise_id_fkey"
+            columns: ["user_id", "exercise_id"]
+            isOneToOne: false
+            referencedRelation: "user_exercises"
+            referencedColumns: ["user_id", "id"]
+          },
+          {
+            foreignKeyName: "user_logged_exercises_user_id_superset_id_fkey"
+            columns: ["user_id", "superset_id"]
+            isOneToOne: false
+            referencedRelation: "user_supersets"
+            referencedColumns: ["user_id", "id"]
+          },
+          {
+            foreignKeyName: "user_logged_exercises_session_id_superset_id_fkey"
+            columns: ["session_id", "superset_id"]
+            isOneToOne: false
+            referencedRelation: "user_supersets"
+            referencedColumns: ["session_id", "id"]
+          },
+        ]
+      }
+      user_notes: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          body: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          body: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          body?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: Record<string, never>
+    Functions: Record<string, never>
+    Enums: Record<string, never>
+    CompositeTypes: Record<string, never>
+  }
+}
+
+type PublicSchema = Database["public"]
+type PublicTables = PublicSchema["Tables"]
+
+export type TableName = keyof PublicTables
+
+export type TableRow<T extends TableName> = PublicTables[T]["Row"]
+export type TableInsert<T extends TableName> = PublicTables[T]["Insert"]
+export type TableUpdate<T extends TableName> = PublicTables[T]["Update"]
+
+export type UserIssue = TableRow<"user_issues">
+export type UserIssueInsert = TableInsert<"user_issues">
+export type UserIssueUpdate = TableUpdate<"user_issues">
+
+export type UserIssueRelationship = TableRow<"user_issue_relationships">
+export type UserIssueRelationshipInsert = TableInsert<"user_issue_relationships">
+export type UserIssueRelationshipUpdate = TableUpdate<"user_issue_relationships">
+
+export type UserQuality = TableRow<"user_qualities">
+export type UserQualityInsert = TableInsert<"user_qualities">
+export type UserQualityUpdate = TableUpdate<"user_qualities">
+
+export type UserIssueQualityRelationship =
+  TableRow<"user_issue_quality_relationships">
+export type UserIssueQualityRelationshipInsert =
+  TableInsert<"user_issue_quality_relationships">
+export type UserIssueQualityRelationshipUpdate =
+  TableUpdate<"user_issue_quality_relationships">
+
+export type UserExercise = TableRow<"user_exercises">
+export type UserExerciseInsert = TableInsert<"user_exercises">
+export type UserExerciseUpdate = TableUpdate<"user_exercises">
+
+export type UserSession = TableRow<"user_sessions">
+export type UserSessionInsert = TableInsert<"user_sessions">
+export type UserSessionUpdate = TableUpdate<"user_sessions">
+
+export type UserSuperset = TableRow<"user_supersets">
+export type UserSupersetInsert = TableInsert<"user_supersets">
+export type UserSupersetUpdate = TableUpdate<"user_supersets">
+
+export type UserLoggedExercise = TableRow<"user_logged_exercises">
+export type UserLoggedExerciseInsert = TableInsert<"user_logged_exercises">
+export type UserLoggedExerciseUpdate = TableUpdate<"user_logged_exercises">
+
+export type UserNote = TableRow<"user_notes">
+export type UserNoteInsert = TableInsert<"user_notes">
+export type UserNoteUpdate = TableUpdate<"user_notes">
