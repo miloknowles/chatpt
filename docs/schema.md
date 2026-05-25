@@ -15,6 +15,10 @@
   - `user_*` rows are mutable.
   - Users can edit notes, adjust sets/reps/performance, reorder items, and otherwise update records over time.
   - We are not enforcing immutable historical snapshots in v1.
+- Library metadata columns:
+  - `library_*` tables should include `publish_status text not null check (publish_status in ('draft', 'active', 'deleted'))`.
+  - `library_*` tables should include `version int not null default 1`.
+  - No `slug` column for now.
 
 ```sql
 -- Issues: what's wrong or being managed
