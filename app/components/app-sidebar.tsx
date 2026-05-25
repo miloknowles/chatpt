@@ -2,8 +2,8 @@
 
 import * as React from "react"
 
+import { NavLibrary } from "@/components/nav-library"
 import { NavMain } from "@/components/nav-main"
-import { NavProjects } from "@/components/nav-projects"
 import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
@@ -12,13 +12,11 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import {
-  ActivityIcon,
   CompassIcon,
   DumbbellIcon,
-  ListChecksIcon,
+  LibraryBigIcon,
   RouteIcon,
   ShieldCheckIcon,
-  TimerIcon,
 } from "lucide-react"
 
 function userNameFromEmail(email: string) {
@@ -101,21 +99,16 @@ const data = {
       ],
     },
   ],
-  projects: [
+  library: [
     {
-      name: "Ankle + Foot",
-      url: "#",
-      icon: <ActivityIcon />,
+      title: "Exercises",
+      url: "/training/exercises",
+      icon: <LibraryBigIcon />,
     },
     {
-      name: "Posterior Chain",
-      url: "#",
-      icon: <ListChecksIcon />,
-    },
-    {
-      name: "Marathon Build",
-      url: "#",
-      icon: <TimerIcon />,
+      title: "Session Builder",
+      url: "/training/sessions",
+      icon: <RouteIcon />,
     },
   ],
 }
@@ -155,7 +148,7 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
+        <NavLibrary items={data.library} />
       </SidebarContent>
       <SidebarRail />
     </Sidebar>

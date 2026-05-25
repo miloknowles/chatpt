@@ -26,13 +26,7 @@ import {
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 
-const MARBLE_POP_COLORS = [
-  "#5b1d99",
-  "#0074b4",
-  "#00b34c",
-  "#ffd41f",
-  "#fc6e3d",
-]
+const BRAND_BEAM_DUOTONE_COLORS = ["var(--primary)", "#f59e0b"]
 
 export function NavUser({
   user,
@@ -63,8 +57,8 @@ export function NavUser({
               <BoringAvatar
                 size={32}
                 name={avatarSeed}
-                variant="marble"
-                colors={MARBLE_POP_COLORS}
+                variant="beam"
+                colors={BRAND_BEAM_DUOTONE_COLORS}
               />
             </div>
             <div className="grid flex-1 text-left text-sm leading-tight">
@@ -86,8 +80,8 @@ export function NavUser({
                     <BoringAvatar
                       size={32}
                       name={avatarSeed}
-                      variant="marble"
-                      colors={MARBLE_POP_COLORS}
+                      variant="beam"
+                      colors={BRAND_BEAM_DUOTONE_COLORS}
                     />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">

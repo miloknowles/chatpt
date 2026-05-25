@@ -1,10 +1,11 @@
 "use client"
 
 import type { ReactNode } from "react"
+import { usePathname } from "next/navigation"
+import { DumbbellIcon, LibraryBigIcon, RouteIcon, SettingsIcon } from "lucide-react"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { useAuth } from "@/components/auth-provider"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import {
   SidebarInset,
@@ -15,19 +16,30 @@ import {
 interface TrainingShellProps {
   email: string
   title?: string
+  hideTitleOnMobile?: boolean
   children?: ReactNode
 }
 
 export function TrainingShell({
   email,
   title = "Training Dashboard",
+  hideTitleOnMobile = false,
   children,
 }: TrainingShellProps) {
+  const pathname = usePathname()
   const { signOut, isLoading, user } = useAuth()
   const effectiveEmail = user?.email ?? email
   const metadataDisplayName = user?.user_metadata?.display_name
   const displayName =
     typeof metadataDisplayName === "string" ? metadataDisplayName : undefined
+  const MobileHeaderIcon =
+    pathname === "/training/exercises"
+      ? LibraryBigIcon
+      : pathname === "/training/sessions"
+        ? RouteIcon
+      : pathname === "/training/settings"
+        ? SettingsIcon
+        : DumbbellIcon
 
   return (
     <SidebarProvider>
@@ -45,28 +57,31 @@ export function TrainingShell({
               orientation="vertical"
               className="mr-1 data-vertical:h-4 data-vertical:self-auto"
             />
-            <p className="font-heading text-sm font-medium text-muted-foreground">
-              Training
+            <p className="flex items-center gap-1.5 font-heading text-sm font-medium text-muted-foreground">
+              <MobileHeaderIcon className="size-4 md:hidden" />
+              {title}
             </p>
           </div>
         </header>
         <main className="flex flex-1 flex-col gap-6 p-6">
-          <Card className="border-border/70 bg-card/90 shadow-xl shadow-foreground/5">
-            <CardHeader>
-              <CardTitle className="text-2xl">{title}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm text-muted-foreground">
-              {children ?? (
-                <>
-                  <p>Signed in as {effectiveEmail}.</p>
-                  <p>
-                    This route is protected server-side and unlocked only when your
-                    Supabase session is valid.
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            <h1
+              className={`text-xl font-semibold sm:text-2xl ${
+                hideTitleOnMobile ? "hidden sm:block" : ""
+              }`}
+            >
+              {title}
+            </h1>
+            {children ?? (
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>Signed in as {effectiveEmail}.</p>
+                <p>
+                  This route is protected server-side and unlocked only when your
+                  Supabase session is valid.
+                </p>
+              </div>
+            )}
+          </div>
         </main>
       </SidebarInset>
     </SidebarProvider>

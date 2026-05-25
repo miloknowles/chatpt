@@ -32,3 +32,10 @@ Fix:
   "buildCommand": "cd app && yarn build"
 }
 ```
+
+## MCP Server (TypeScript)
+
+This repo now includes a dedicated MCP server in `mcp/` for AI-assisted training actions.
+
+- Service docs and setup: `mcp/README.md`
+- Shared tool schemas/contracts: `packages/domain-contracts/`

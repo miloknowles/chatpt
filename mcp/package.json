@@ -1,0 +1,31 @@
+{
+  "name": "@chatpt/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "yarn@4.15.0",
+  "scripts": {
+    "contracts:prepare": "yarn --cwd ../packages/domain-contracts install && yarn --cwd ../packages/domain-contracts build",
+    "predev": "yarn contracts:prepare",
+    "dev": "tsx src/index.ts",
+    "dev:vercel": "vercel dev",
+    "prebuild": "yarn contracts:prepare",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/index.js",
+    "pretest": "yarn contracts:prepare",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@chatpt/domain-contracts": "file:../packages/domain-contracts",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@supabase/supabase-js": "^2.106.1",
+    "ws": "^8.18.3",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.25",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

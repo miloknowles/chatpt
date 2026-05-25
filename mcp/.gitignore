@@ -1,0 +1,10 @@
+# Local secrets and overrides
+.env.local
+
+# Build artifacts
+dist/
+
+# Install/runtime artifacts
+node_modules/
+.pnp.*
+.yarn/install-state.gz
