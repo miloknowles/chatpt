@@ -1,17 +1,17 @@
 import { redirect } from "next/navigation"
 
-import { DashboardShell } from "@/components/dashboard-shell"
+import { TrainingShell } from "@/components/training-shell"
 import { createClient } from "@/lib/supabase/server"
 
-export default async function DashboardPage() {
+export default async function TrainingPage() {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
   if (!user) {
-    redirect("/auth?next=/dashboard")
+    redirect("/auth?next=/training")
   }
 
-  return <DashboardShell email={user.email ?? "Unknown email"} />
+  return <TrainingShell email={user.email ?? "Unknown email"} />
 }

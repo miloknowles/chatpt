@@ -1942,6 +1942,7 @@ __metadata:
     "@types/node": "npm:^20"
     "@types/react": "npm:^19"
     "@types/react-dom": "npm:^19"
+    boring-avatars: "npm:^2.0.4"
     class-variance-authority: "npm:^0.7.1"
     clsx: "npm:^2.1.1"
     eslint: "npm:^9"
@@ -2163,6 +2164,16 @@ __metadata:
     raw-body: "npm:^3.0.1"
     type-is: "npm:^2.0.1"
   checksum: 10c0/95a830a003b38654b75166ca765358aa92ee3d561bf0e41d6ccdde0e1a0c9783cab6b90b20eb635d23172c010b59d3563a137a738e74da4ba714463510d05137
+  languageName: node
+  linkType: hard
+
+"boring-avatars@npm:^2.0.4":
+  version: 2.0.4
+  resolution: "boring-avatars@npm:2.0.4"
+  peerDependencies:
+    react: ">=18.0.0"
+    react-dom: ">=18.0.0"
+  checksum: 10c0/9a55cce3d59aff2dda20b6f972e91280892ed3579b2ff5fca8ae5b00425066b867d7ad7ea65e1932463b6025b5f7b7ce5c85b7024c7602c8aa4a6e69dd5f1c6c
   languageName: node
   linkType: hard
 

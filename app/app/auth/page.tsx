@@ -10,7 +10,7 @@ export default async function AuthPage() {
   } = await supabase.auth.getUser()
 
   if (user) {
-    redirect("/dashboard")
+    redirect("/training")
   }
 
   return <AuthPanel />

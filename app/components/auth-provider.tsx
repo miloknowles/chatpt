@@ -24,6 +24,7 @@ export interface AuthContextValue {
   requestOtp(email: string): AuthActionResult
   verifyEmailOtp(email: string, token: string): AuthActionResult
   resendOtp(email: string): AuthActionResult
+  updateDisplayName(displayName: string): AuthActionResult
   signOut(): Promise<void>
 }
 
@@ -133,6 +134,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [requestOtp, resendAllowedAt]
   )
 
+  const updateDisplayName = useCallback(
+    async (displayName: string) => {
+      const normalizedDisplayName = displayName.trim()
+
+      if (!normalizedDisplayName) {
+        return { error: "Display name cannot be empty." }
+      }
+
+      const { data, error } = await supabase.auth.updateUser({
+        data: { display_name: normalizedDisplayName },
+      })
+
+      if (error) {
+        return { error: formatAuthError(error) }
+      }
+
+      setUser(data.user ?? null)
+      router.refresh()
+      return {}
+    },
+    [router, supabase]
+  )
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
     router.push("/")
@@ -148,9 +172,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestOtp,
       verifyEmailOtp,
       resendOtp,
+      updateDisplayName,
       signOut,
     }),
-    [isLoading, requestOtp, resendOtp, session, signOut, user, verifyEmailOtp]
+    [
+      isLoading,
+      requestOtp,
+      resendOtp,
+      session,
+      signOut,
+      updateDisplayName,
+      user,
+      verifyEmailOtp,
+    ]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -40,7 +40,7 @@ export function AuthPanel() {
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false)
   const [resendCountdownSeconds, setResendCountdownSeconds] = useState(0)
 
-  const redirectTo = searchParams.get("next") ?? "/dashboard"
+  const redirectTo = searchParams.get("next") ?? "/training"
   const remainingResendSeconds = resendCountdownSeconds
   const canResend = resendCountdownSeconds <= 0
 
@@ -168,7 +168,7 @@ export function AuthPanel() {
                   required
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="h-11 bg-background/70 focus-visible:border-cyan-300 focus-visible:ring-cyan-300/40"
+                  className="h-11 bg-background/70"
                 />
               </div>
 
@@ -208,7 +208,7 @@ export function AuthPanel() {
                   required
                   value={token}
                   onChange={(event) => handleTokenChange(event.target.value)}
-                  className="h-11 bg-background/70 text-center text-lg tracking-[0.4em] focus-visible:border-cyan-300 focus-visible:ring-cyan-300/40"
+                  className="h-11 bg-background/70 text-center text-lg tracking-[0.4em]"
                 />
               </div>
 
@@ -256,7 +256,7 @@ export function AuthPanel() {
             </form>
           )}
 
-          {info ? <p className="mt-4 text-sm text-cyan-300">{info}</p> : null}
+          {info ? <p className="mt-4 text-sm text-primary">{info}</p> : null}
           {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
         </CardContent>
       </Card>
