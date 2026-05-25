@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react"
 import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronsLeftIcon,
+  ChevronsRightIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
@@ -540,7 +544,7 @@ export function ExerciseLibrary() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-col gap-4 md:h-full md:flex-1 md:gap-2">
       <div className="flex items-center gap-2">
         <div className="relative min-w-0 flex-1">
           <Input
@@ -723,9 +727,16 @@ export function ExerciseLibrary() {
           }))}
       </div>
 
-      <div className="hidden overflow-x-auto rounded-md border border-border/60 md:block">
-        <table className="w-full min-w-[760px] text-left text-sm">
-          <thead className="bg-muted/40 text-muted-foreground">
+      <div className="hidden min-h-0 flex-1 overflow-auto rounded-md border border-border/60 md:block">
+        <table className="w-full min-w-[760px] table-fixed text-left text-sm">
+          <colgroup>
+            <col className="w-[18rem]" />
+            <col />
+            <col className="w-32" />
+            <col className="w-32" />
+            <col className="w-24" />
+          </colgroup>
+          <thead className="sticky top-0 z-10 bg-muted text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Tags</th>
@@ -783,10 +794,12 @@ export function ExerciseLibrary() {
               return (
                 <tr key={exercise.id} className="border-t border-border/50">
                   <td className="px-4 py-3 align-top">
-                    <div className="font-medium text-foreground">{exercise.name}</div>
+                    <div className="line-clamp-2 font-medium text-foreground">
+                      {exercise.name}
+                    </div>
                     {exercise.notes ? (
                       <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                        {exercise.notes}
+                        {exercise.notes ?? "No notes provided"}
                       </div>
                     ) : null}
                   </td>
@@ -904,26 +917,50 @@ export function ExerciseLibrary() {
         </table>
       </div>
 
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          Page {page} of {totalPages}
-        </p>
-        <div className="flex items-center gap-2">
+      <div className="flex min-h-6 items-center justify-end">
+        <div className="flex items-center gap-1">
           <Button
             variant="outline"
-            size="sm"
+            size="icon-sm"
             disabled={page <= 1 || isLoading}
-            onClick={() => setPage(page - 1)}
+            onClick={() => setPage(1)}
+            aria-label="Go to first page"
+            title="First page"
           >
-            Previous
+            <ChevronsLeftIcon />
           </Button>
           <Button
             variant="outline"
-            size="sm"
+            size="icon-sm"
+            disabled={page <= 1 || isLoading}
+            onClick={() => setPage(page - 1)}
+            aria-label="Go to previous page"
+            title="Previous page"
+          >
+            <ChevronLeftIcon />
+          </Button>
+          <p className="px-1.5 text-xs leading-none text-muted-foreground">
+            Page {page} of {totalPages}
+          </p>
+          <Button
+            variant="outline"
+            size="icon-sm"
             disabled={page >= totalPages || isLoading}
             onClick={() => setPage(page + 1)}
+            aria-label="Go to next page"
+            title="Next page"
           >
-            Next
+            <ChevronRightIcon />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            disabled={page >= totalPages || isLoading}
+            onClick={() => setPage(totalPages)}
+            aria-label="Go to last page"
+            title="Last page"
+          >
+            <ChevronsRightIcon />
           </Button>
         </div>
       </div>

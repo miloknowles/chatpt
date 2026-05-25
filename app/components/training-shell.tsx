@@ -25,14 +25,18 @@ import {
 interface TrainingShellProps {
   email: string
   title?: string
+  hideTitle?: boolean
   hideTitleOnMobile?: boolean
+  contentClassName?: string
   children?: ReactNode
 }
 
 export function TrainingShell({
   email,
   title = "Training Dashboard",
+  hideTitle = false,
   hideTitleOnMobile = false,
+  contentClassName,
   children,
 }: TrainingShellProps) {
   const pathname = usePathname()
@@ -89,7 +93,7 @@ export function TrainingShell({
         onSignOut={signOut}
         isSigningOut={isLoading}
       />
-      <SidebarInset>
+      <SidebarInset className="md:h-svh md:min-h-0 md:overflow-hidden">
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <div className="flex items-center gap-2">
             <div className="hidden items-center gap-2 md:flex">
@@ -105,15 +109,17 @@ export function TrainingShell({
             </p>
           </div>
         </header>
-        <main className="flex flex-1 flex-col gap-6 p-4 pb-24 md:p-6 md:pb-6">
-          <div className="space-y-6">
-            <h1
-              className={`text-xl font-semibold sm:text-2xl ${
-                hideTitleOnMobile ? "hidden sm:block" : ""
-              }`}
-            >
-              {title}
-            </h1>
+        <main className="flex flex-1 min-h-0 flex-col gap-6 p-4 pb-24 md:p-6 md:pb-6">
+          <div className={cn("space-y-6", contentClassName)}>
+            {hideTitle ? null : (
+              <h1
+                className={`text-xl font-semibold sm:text-2xl ${
+                  hideTitleOnMobile ? "hidden sm:block" : ""
+                }`}
+              >
+                {title}
+              </h1>
+            )}
             {children ?? (
               <div className="space-y-2 text-sm text-muted-foreground">
                 <p>Signed in as {effectiveEmail}.</p>

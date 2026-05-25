@@ -18,7 +18,9 @@ export default async function TrainingExercisesPage() {
     <TrainingShell
       email={user.email ?? "Unknown email"}
       title="Exercise Library"
+      hideTitle
       hideTitleOnMobile
+      contentClassName="md:flex md:h-full md:min-h-0 md:flex-col md:gap-4 md:space-y-0"
     >
       <ExerciseLibrary />
     </TrainingShell>
