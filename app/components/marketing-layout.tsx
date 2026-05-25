@@ -11,7 +11,7 @@ export function MarketingLayout({ children }: MarketingLayoutProps) {
   return (
     <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-100/60 via-background to-indigo-100/50 dark:from-slate-950 dark:via-background dark:to-indigo-950/40" />
+        <div className="absolute inset-0 bg-linear-to-br from-cyan-100/60 via-background to-indigo-100/50 dark:from-slate-950 dark:via-background dark:to-indigo-950/40" />
         <div className="bg-crosshatch absolute inset-0 opacity-45 dark:opacity-35" />
         <div className="absolute -top-28 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-cyan-400/25 blur-3xl dark:bg-cyan-400/20" />
         <div className="absolute top-20 -left-16 h-72 w-72 rounded-full bg-sky-300/20 blur-3xl dark:bg-sky-500/15" />
@@ -21,7 +21,7 @@ export function MarketingLayout({ children }: MarketingLayoutProps) {
 
       <section className="relative mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-10 lg:px-10">
         <header className="mb-8 flex items-center justify-between">
-          <p className="font-heading text-base font-medium text-muted-foreground">
+          <p className="font-heading text-lg font-semibold text-muted-foreground">
             🏔️ ChatPT
           </p>
           <ThemeToggle />
@@ -31,12 +31,11 @@ export function MarketingLayout({ children }: MarketingLayoutProps) {
           <div className="space-y-8">
             <div className="space-y-5">
               <h1 className="max-w-xl text-3xl leading-tight font-bold sm:text-5xl lg:text-5xl">
-                You only get one body. Make the most of it with systematic
-                training.
+                You only get one body. Make the most of it with systematic training.
               </h1>
               <p className="max-w-lg text-base text-muted-foreground sm:text-lg">
-                Most fitness apps track exercises. This one tracks qualities -
-                the trainable dimensions of your body that impact performance
+                Most fitness apps are just a checklist. This one tracks <i>qualities </i> —
+                trainable dimensions of your body that impact performance
                 and well-being. Build the ones you&apos;re working on. Maintain
                 the ones you&apos;ve earned. Catch the gaps before they become
                 injuries.
@@ -48,12 +47,6 @@ export function MarketingLayout({ children }: MarketingLayoutProps) {
                 variant="secondary"
                 className="p-3"
               >
-                Easy exercise tracking
-              </Badge>
-              <Badge
-                variant="secondary"
-                className="p-3"
-              >
                 Manage PT in one place
               </Badge>
               <Badge
@@ -61,6 +54,12 @@ export function MarketingLayout({ children }: MarketingLayoutProps) {
                 className="p-3"
               >
                 Stay on track with AI guidance
+              </Badge>
+              <Badge
+                variant="secondary"
+                className="p-3"
+              >
+                Easy exercise tracking
               </Badge>
             </div>
           </div>
