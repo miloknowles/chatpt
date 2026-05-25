@@ -33,7 +33,10 @@ export function ExercisePalette({
   onExerciseDragStart,
 }: ExercisePaletteProps) {
   return (
-    <aside className="space-y-3 border-b border-border/60 pb-4 lg:border-r lg:border-b-0 lg:pr-4 lg:pb-0">
+    <aside className="flex min-h-0 flex-col gap-3 border-b border-border/60 pb-4 md:p-4 lg:h-full lg:border-r lg:border-b-0">
+      <h2 className="font-heading text-sm font-semibold text-foreground">
+        Session Builder
+      </h2>
       <Button
         type="button"
         variant="outline"
@@ -49,7 +52,7 @@ export function ExercisePalette({
         onChange={(event) => onSearchChange(event.target.value)}
         placeholder="Search exercises"
       />
-      <div className="space-y-1">
+      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">
         {isLoading ? (
           <div className="px-2 py-2 text-sm text-muted-foreground">
             Searching...

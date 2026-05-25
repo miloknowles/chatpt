@@ -21,7 +21,7 @@ export function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
       >
         <div
           className={cn(
-            "rounded-md px-3 py-2 text-sm leading-6 shadow-xs",
+            "rounded-2xl px-3 py-2 text-sm leading-6 shadow-xs",
             isUser
               ? "bg-primary text-primary-foreground"
               : "border border-border/70 bg-muted/60 text-foreground"

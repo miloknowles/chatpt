@@ -20,6 +20,8 @@ export default async function TrainingSessionsPage() {
       title="Sessions"
       hideTitle
       hideTitleOnMobile
+      contentClassName="md:h-full md:min-h-0 md:space-y-0"
+      desktopContentClassName="md:p-0"
     >
       <SessionBuilder />
     </TrainingShell>

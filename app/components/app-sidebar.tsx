@@ -13,11 +13,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import {
-  CompassIcon,
   DumbbellIcon,
-  MessageSquareIcon,
-  RouteIcon,
-  ShieldCheckIcon,
 } from "lucide-react"
 
 function userNameFromEmail(email: string) {
@@ -45,76 +41,6 @@ const data = {
           url: "/training",
         },
       ],
-    },
-    {
-      title: "Sessions",
-      url: "#",
-      icon: <RouteIcon />,
-      items: [
-        {
-          title: "Pre-run Prep",
-          url: "#",
-        },
-        {
-          title: "Strength Blocks",
-          url: "#",
-        },
-        {
-          title: "Cardio Work",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Qualities",
-      url: "#",
-      icon: <ShieldCheckIcon />,
-      items: [
-        {
-          title: "Building",
-          url: "#",
-        },
-        {
-          title: "Maintaining",
-          url: "#",
-        },
-        {
-          title: "Inactive",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Insights",
-      url: "#",
-      icon: <CompassIcon />,
-      items: [
-        {
-          title: "Coverage Gaps",
-          url: "#",
-        },
-        {
-          title: "Progression Risks",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  chat: [
-    {
-      title: "Coach: Weekly Build",
-      url: "/training/chat?thread=weekly-build",
-      icon: <MessageSquareIcon />,
-    },
-    {
-      title: "Adjust Tomorrow Session",
-      url: "/training/chat?thread=adjust-tomorrow",
-      icon: <MessageSquareIcon />,
-    },
-    {
-      title: "Recovery Check-in",
-      url: "/training/chat?thread=recovery-checkin",
-      icon: <MessageSquareIcon />,
     },
   ],
 }
@@ -155,7 +81,7 @@ export function AppSidebar({
       <SidebarContent>
         <NavMain items={data.navMain} />
         <NavProgram />
-        <NavChat items={data.chat} />
+        <NavChat />
       </SidebarContent>
       <SidebarRail />
     </Sidebar>

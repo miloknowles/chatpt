@@ -32,6 +32,7 @@ interface TrainingShellProps {
   hideTitle?: boolean
   hideTitleOnMobile?: boolean
   contentClassName?: string
+  desktopContentClassName?: string
   children?: ReactNode
 }
 
@@ -41,6 +42,7 @@ export function TrainingShell({
   hideTitle = false,
   hideTitleOnMobile = false,
   contentClassName,
+  desktopContentClassName,
   children,
 }: TrainingShellProps) {
   const pathname = usePathname()
@@ -56,11 +58,11 @@ export function TrainingShell({
       ? LibraryBigIcon
       : pathname === "/training/program"
         ? LibraryBigIcon
-      : pathname === "/training/sessions"
-        ? RouteIcon
-      : pathname === "/training/settings"
-        ? SettingsIcon
-        : DumbbellIcon
+        : pathname === "/training/sessions"
+          ? RouteIcon
+          : pathname === "/training/settings"
+            ? SettingsIcon
+            : DumbbellIcon
   const mobileNavItems = [
     {
       label: "Training",
@@ -128,9 +130,8 @@ export function TrainingShell({
     <div className={cn("space-y-6", contentClassName)}>
       {hideTitle ? null : (
         <h1
-          className={`text-xl font-semibold sm:text-2xl ${
-            hideTitleOnMobile ? "hidden sm:block" : ""
-          }`}
+          className={`text-xl font-semibold sm:text-2xl ${hideTitleOnMobile ? "hidden sm:block" : ""
+            }`}
         >
           {title}
         </h1>
@@ -156,7 +157,7 @@ export function TrainingShell({
         isSigningOut={isLoading}
       />
       <SidebarInset className="md:h-svh md:min-h-0 md:overflow-hidden">
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4">
+        <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b px-3">
           <div className="flex items-center gap-2">
             <div className="hidden items-center gap-2 md:flex">
               <SidebarTrigger className="-ml-1" />
@@ -172,15 +173,15 @@ export function TrainingShell({
           </div>
           <Button
             type="button"
-            variant={isDesktopChatOpen ? "secondary" : "outline"}
-            size="icon-sm"
-            className="hidden md:inline-flex"
+            variant="default"
+            size="lg"
+            className="hidden size-9 md:inline-flex rounded-full"
             aria-keyshortcuts="c"
             aria-label={isDesktopChatOpen ? "Close chat panel" : "Open chat panel"}
             title={isDesktopChatOpen ? "Close chat (c)" : "Open chat (c)"}
             onClick={() => setIsDesktopChatOpen((current) => !current)}
           >
-            {isDesktopChatOpen ? <PanelRightCloseIcon /> : <MessageSquareIcon />}
+            {isDesktopChatOpen ? <PanelRightCloseIcon className="size-4" /> : <MessageSquareIcon className="size-4" />}
           </Button>
         </header>
         <main className="flex flex-1 min-h-0 flex-col">
@@ -190,7 +191,12 @@ export function TrainingShell({
           <section className="hidden min-h-0 flex-1 md:flex">
             {isDesktopChatOpen ? (
               <>
-                <div className="min-w-0 flex-1 overflow-auto p-6">
+                <div
+                  className={cn(
+                    "min-w-0 flex-1 overflow-auto p-6",
+                    desktopContentClassName
+                  )}
+                >
                   {pageContent}
                 </div>
                 <aside className="flex h-full w-96 shrink-0 flex-col border-l bg-background xl:w-[28rem]">
@@ -198,7 +204,14 @@ export function TrainingShell({
                 </aside>
               </>
             ) : (
-              <div className="h-full w-full overflow-auto p-6">{pageContent}</div>
+              <div
+                className={cn(
+                  "h-full w-full overflow-auto p-6",
+                  desktopContentClassName
+                )}
+              >
+                {pageContent}
+              </div>
             )}
           </section>
         </main>

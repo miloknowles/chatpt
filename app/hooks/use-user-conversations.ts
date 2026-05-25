@@ -37,7 +37,13 @@ function getConversationPreview(content: string) {
   return `${preview.slice(0, 57).trim()}...`
 }
 
-export function useUserConversations({ limit = 10 }: { limit?: number } = {}) {
+export function useUserConversations({
+  limit = 10,
+  autoCreate = true,
+}: {
+  limit?: number
+  autoCreate?: boolean
+} = {}) {
   const { user, isLoading: isAuthLoading } = useAuth()
   const supabase = useMemo(() => createClient(), [])
 
@@ -126,13 +132,13 @@ export function useUserConversations({ limit = 10 }: { limit?: number } = {}) {
     }
 
     const loadTimer = window.setTimeout(() => {
-      void loadConversations()
+      void loadConversations({ autoCreate })
     }, 0)
 
     return () => {
       window.clearTimeout(loadTimer)
     }
-  }, [isAuthLoading, loadConversations])
+  }, [autoCreate, isAuthLoading, loadConversations])
 
   useEffect(() => {
     if (isAuthLoading || !user) {

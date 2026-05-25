@@ -275,15 +275,15 @@ export function SessionBuilder() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="h-full min-h-0 space-y-4 md:space-y-0">
       {!selectedSession ? (
-        <div className="text-sm text-muted-foreground">
+        <div className="p-6 text-sm text-muted-foreground">
           {isLoading
             ? "Loading sessions..."
             : "Select a session from the left sidebar to start editing."}
         </div>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-[17rem_minmax(0,1fr)]">
+        <div className="grid h-full min-h-0 gap-5 md:gap-0 lg:grid-cols-[17rem_minmax(0,1fr)]">
           <ExercisePalette
             exercises={exercises}
             searchQuery={exerciseSearchQuery}
@@ -295,7 +295,7 @@ export function SessionBuilder() {
             onExerciseDragStart={handleExerciseDragStart}
           />
 
-          <div className="space-y-4">
+          <div className="min-h-0 space-y-4 overflow-y-auto md:p-6">
             <SessionDetails
               session={selectedSession}
               draftName={draftName}

@@ -43,7 +43,7 @@ export function ChatHeader({
     <div
       className={cn(
         "flex items-center justify-between gap-2 border-b border-border/70",
-        isAside ? "px-4 py-3" : "px-4 py-3 sm:px-5"
+        isAside ? "px-3 py-2" : "px-4 py-2 sm:px-5"
       )}
     >
       <DropdownMenu>
@@ -52,7 +52,7 @@ export function ChatHeader({
             <Button
               type="button"
               variant="ghost"
-              className="min-w-0 max-w-full justify-start px-2"
+              className="h-8 min-w-0 max-w-full justify-start px-2"
               disabled={isLoading && conversations.length === 0}
             />
           }
@@ -95,7 +95,7 @@ export function ChatHeader({
         type="button"
         variant="outline"
         size="sm"
-        className="shrink-0"
+        className="h-8 shrink-0"
         disabled={isMutating}
         onClick={onCreateConversation}
       >
