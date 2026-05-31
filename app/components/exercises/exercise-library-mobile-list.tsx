@@ -5,7 +5,17 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 import { ExerciseActionsMenu } from "./exercise-actions-menu"
 import { ExerciseMedia } from "./exercise-media"
+import { getTaxonomyColorDotClass } from "./taxonomy-colors"
 import type { UserExercise } from "./types"
+
+function TaxonomyDot({ color }: { color: string | null }) {
+  return (
+    <span
+      className={`size-2 rounded-full border border-border ${getTaxonomyColorDotClass(color)}`}
+      aria-hidden="true"
+    />
+  )
+}
 
 type ExerciseLibraryMobileListProps = {
   exercises: UserExercise[]
@@ -77,14 +87,26 @@ export function ExerciseLibraryMobileList({
 
             <div className="flex items-end justify-between gap-2 pt-1">
               <div className="flex flex-wrap gap-1">
-                {exercise.tags?.length ? (
-                  exercise.tags.map((tag) => (
-                    <Badge key={`${exercise.id}-${tag}`} variant="outline">
-                      {tag}
-                    </Badge>
-                  ))
+                {exercise.types.length || exercise.body_regions.length ? (
+                  <>
+                    {exercise.types.map((type) => (
+                      <Badge key={`${exercise.id}-type-${type.id}`} variant="outline">
+                        <TaxonomyDot color={type.display_color} />
+                        {type.name}
+                      </Badge>
+                    ))}
+                    {exercise.body_regions.map((bodyRegion) => (
+                      <Badge
+                        key={`${exercise.id}-region-${bodyRegion.id}`}
+                        variant="outline"
+                      >
+                        <TaxonomyDot color={bodyRegion.display_color} />
+                        {bodyRegion.name}
+                      </Badge>
+                    ))}
+                  </>
                 ) : (
-                  <span className="text-xs text-muted-foreground">No tags</span>
+                  <span className="text-xs text-muted-foreground">No taxonomy</span>
                 )}
               </div>
               <ExerciseActionsMenu

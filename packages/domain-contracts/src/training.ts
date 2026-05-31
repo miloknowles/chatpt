@@ -32,14 +32,15 @@ export const ListUserExercisesInputSchema = z.object({
   limit: z.number().int().min(1).max(100).default(20),
 })
 
-export const ListUserExerciseTagsInputSchema = z.object({})
+export const ListUserExerciseTaxonomyInputSchema = z.object({})
 
 export const CreateUserExerciseInputSchema = z.object({
   name: z.string().min(1).max(200),
   notes: z.string().max(4000).nullable().optional(),
   imageUrl: z.string().url().nullable().optional(),
   videoUrl: z.string().url().nullable().optional(),
-  tags: z.array(z.string().min(1).max(80)).max(30).nullable().optional(),
+  exerciseTypeIds: z.array(z.string().uuid()).max(30).nullable().optional(),
+  bodyRegionIds: z.array(z.string().uuid()).max(30).nullable().optional(),
   performance: z.record(z.unknown()).nullable().optional(),
 })
 
@@ -50,7 +51,8 @@ export const UpdateUserExerciseInputSchema = z
     notes: z.string().max(4000).nullable().optional(),
     imageUrl: z.string().url().nullable().optional(),
     videoUrl: z.string().url().nullable().optional(),
-    tags: z.array(z.string().min(1).max(80)).max(30).nullable().optional(),
+    exerciseTypeIds: z.array(z.string().uuid()).max(30).nullable().optional(),
+    bodyRegionIds: z.array(z.string().uuid()).max(30).nullable().optional(),
     performance: z.record(z.unknown()).nullable().optional(),
   })
   .refine(
@@ -59,11 +61,12 @@ export const UpdateUserExerciseInputSchema = z
       value.notes !== undefined ||
       value.imageUrl !== undefined ||
       value.videoUrl !== undefined ||
-      value.tags !== undefined ||
+      value.exerciseTypeIds !== undefined ||
+      value.bodyRegionIds !== undefined ||
       value.performance !== undefined,
     {
       message:
-        "At least one editable field is required: name, notes, imageUrl, videoUrl, tags, or performance.",
+        "At least one editable field is required: name, notes, imageUrl, videoUrl, exerciseTypeIds, bodyRegionIds, or performance.",
     }
   )
 
@@ -94,7 +97,9 @@ export const CreateUserNoteInputSchema = z.object({
 export type ListUserSessionsInput = z.infer<typeof ListUserSessionsInputSchema>
 export type CreateUserSessionInput = z.infer<typeof CreateUserSessionInputSchema>
 export type ListUserExercisesInput = z.infer<typeof ListUserExercisesInputSchema>
-export type ListUserExerciseTagsInput = z.infer<typeof ListUserExerciseTagsInputSchema>
+export type ListUserExerciseTaxonomyInput = z.infer<
+  typeof ListUserExerciseTaxonomyInputSchema
+>
 export type CreateUserExerciseInput = z.infer<typeof CreateUserExerciseInputSchema>
 export type UpdateUserExerciseInput = z.infer<typeof UpdateUserExerciseInputSchema>
 export type DeleteUserExerciseInput = z.infer<typeof DeleteUserExerciseInputSchema>

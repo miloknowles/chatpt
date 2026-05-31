@@ -5,8 +5,18 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 import { ExerciseActionsMenu } from "./exercise-actions-menu"
 import { ExerciseMedia } from "./exercise-media"
+import { getTaxonomyColorDotClass } from "./taxonomy-colors"
 import type { UserExercise } from "./types"
 import { formatDate } from "./utils"
+
+function TaxonomyDot({ color }: { color: string | null }) {
+  return (
+    <span
+      className={`size-2 rounded-full border border-border ${getTaxonomyColorDotClass(color)}`}
+      aria-hidden="true"
+    />
+  )
+}
 
 type ExerciseLibraryTableProps = {
   exercises: UserExercise[]
@@ -29,16 +39,18 @@ export function ExerciseLibraryTable({
     <div className="hidden min-h-0 flex-1 overflow-auto rounded-md border border-border/60 md:block">
       <table className="w-full min-w-[760px] table-fixed text-left text-sm">
         <colgroup>
-          <col className="w-[18rem]" />
+          <col className="w-[20rem]" />
+          <col className="w-[11rem]" />
+          <col className="w-[11rem]" />
           <col />
-          <col className="w-32" />
           <col className="w-32" />
           <col className="w-24" />
         </colgroup>
         <thead className="sticky top-0 z-10 bg-muted text-muted-foreground">
           <tr>
             <th className="px-4 py-3 font-medium">Name</th>
-            <th className="px-4 py-3 font-medium">Tags</th>
+            <th className="px-4 py-3 font-medium">Exercise Type(s)</th>
+            <th className="px-4 py-3 font-medium">Body Region(s)</th>
             <th className="px-4 py-3 font-medium">Media</th>
             <th className="px-4 py-3 font-medium">Updated</th>
             <th className="px-4 py-3 text-right font-medium">Actions</th>
@@ -52,6 +64,12 @@ export function ExerciseLibraryTable({
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-40" />
                     <Skeleton className="h-3 w-60" />
+                  </div>
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <div className="flex gap-1">
+                    <Skeleton className="h-5 w-14 rounded-full" />
+                    <Skeleton className="h-5 w-14 rounded-full" />
                   </div>
                 </td>
                 <td className="px-4 py-3 align-top">
@@ -78,7 +96,7 @@ export function ExerciseLibraryTable({
             ))
           ) : emptyState ? (
             <tr>
-              <td className="px-4 py-6 text-muted-foreground" colSpan={5}>
+              <td className="px-4 py-6 text-muted-foreground" colSpan={6}>
                 {emptyState}
               </td>
             </tr>
@@ -96,17 +114,35 @@ export function ExerciseLibraryTable({
                 ) : null}
               </td>
               <td className="px-4 py-3 align-top">
-                <div className="flex flex-wrap gap-1">
-                  {exercise.tags?.length ? (
-                    exercise.tags.map((tag) => (
-                      <Badge key={`${exercise.id}-${tag}`} variant="outline">
-                        {tag}
+                {exercise.types.length ? (
+                  <div className="flex flex-wrap gap-1">
+                    {exercise.types.map((type) => (
+                      <Badge key={`${exercise.id}-type-${type.id}`} variant="outline">
+                        <TaxonomyDot color={type.display_color} />
+                        {type.name}
                       </Badge>
-                    ))
-                  ) : (
-                    <span className="text-muted-foreground">None</span>
-                  )}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">None</span>
+                )}
+              </td>
+              <td className="px-4 py-3 align-top">
+                {exercise.body_regions.length ? (
+                  <div className="flex flex-wrap gap-1">
+                    {exercise.body_regions.map((bodyRegion) => (
+                      <Badge
+                        key={`${exercise.id}-region-${bodyRegion.id}`}
+                        variant="outline"
+                      >
+                        <TaxonomyDot color={bodyRegion.display_color} />
+                        {bodyRegion.name}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">None</span>
+                )}
               </td>
               <td className="px-4 py-3 align-top text-muted-foreground">
                 <ExerciseMedia

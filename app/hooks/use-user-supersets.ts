@@ -6,6 +6,7 @@ import { skipToken } from "@reduxjs/toolkit/query"
 import { useAuth } from "@/components/auth-provider"
 import {
   useCreateSupersetMutation,
+  useDeleteSupersetMutation,
   useGetSupersetsQuery,
   useUpdateSupersetMutation,
   type SupersetCreatePayload,
@@ -33,12 +34,17 @@ export function useUserSupersets(sessionId: string | null | undefined) {
     useCreateSupersetMutation()
   const [updateSupersetMutation, updateSupersetState] =
     useUpdateSupersetMutation()
+  const [deleteSupersetMutation, deleteSupersetState] =
+    useDeleteSupersetMutation()
 
   const isMutating =
-    createSupersetState.isLoading || updateSupersetState.isLoading
+    createSupersetState.isLoading ||
+    updateSupersetState.isLoading ||
+    deleteSupersetState.isLoading
   const mutationError =
     getRtkErrorMessage(createSupersetState.error) ??
-    getRtkErrorMessage(updateSupersetState.error)
+    getRtkErrorMessage(updateSupersetState.error) ??
+    getRtkErrorMessage(deleteSupersetState.error)
 
   const createSuperset = useCallback(
     async (
@@ -84,6 +90,30 @@ export function useUserSupersets(sessionId: string | null | undefined) {
     [updateSupersetMutation, user]
   )
 
+  const deleteSuperset = useCallback(
+    async (supersetId: string): HookActionResult => {
+      if (!user) {
+        return { error: "You must be signed in." }
+      }
+
+      if (!sessionId) {
+        return { error: "Select a session before deleting a superset." }
+      }
+
+      try {
+        await deleteSupersetMutation({
+          userId: user.id,
+          sessionId,
+          supersetId,
+        }).unwrap()
+        return {}
+      } catch (error) {
+        return { error: getThrownErrorMessage(error) }
+      }
+    },
+    [deleteSupersetMutation, sessionId, user]
+  )
+
   return useMemo(
     () => ({
       supersets: supersetsQuery.data ?? [],
@@ -93,9 +123,11 @@ export function useUserSupersets(sessionId: string | null | undefined) {
       mutationError,
       createSuperset,
       updateSuperset,
+      deleteSuperset,
     }),
     [
       createSuperset,
+      deleteSuperset,
       isAuthLoading,
       isMutating,
       mutationError,

@@ -5,7 +5,7 @@ import {
   DeleteUserExerciseInputSchema,
   CreateUserNoteInputSchema,
   CreateUserSessionInputSchema,
-  ListUserExerciseTagsInputSchema,
+  ListUserExerciseTaxonomyInputSchema,
   ListUserExercisesInputSchema,
   ListUserSessionsInputSchema,
   LogUserExerciseInputSchema,
@@ -20,7 +20,7 @@ import {
   deleteUserExercise,
   createUserNote,
   createUserSession,
-  listUserExerciseTags,
+  listUserExerciseTaxonomy,
   listUserExercises,
   listUserSessions,
   logUserExercise,
@@ -156,17 +156,17 @@ export function createTrainingMcpServer() {
   )
 
   server.registerTool(
-    "list_user_exercise_tags",
+    "list_user_exercise_taxonomy",
     {
-      title: "List User Exercise Tags",
+      title: "List User Exercise Taxonomy",
       description:
-        "List all unique tags currently used by the authenticated user's exercise library.",
-      inputSchema: ListUserExerciseTagsInputSchema,
+        "List exercise types and body regions for the authenticated user's exercise library.",
+      inputSchema: ListUserExerciseTaxonomyInputSchema,
     },
     async (args: unknown, extra: unknown) => {
-      const input = ListUserExerciseTagsInputSchema.parse(args)
+      const input = ListUserExerciseTaxonomyInputSchema.parse(args)
       const accessToken = getAccessTokenFromExtra(extra)
-      return asToolResult(await listUserExerciseTags(input, accessToken))
+      return asToolResult(await listUserExerciseTaxonomy(input, accessToken))
     }
   )
 

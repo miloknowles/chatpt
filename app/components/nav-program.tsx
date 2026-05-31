@@ -10,6 +10,7 @@ import {
   PencilIcon,
   PlusIcon,
   RouteIcon,
+  TagsIcon,
   Trash2Icon,
 } from "lucide-react"
 
@@ -55,6 +56,7 @@ export function NavProgram() {
   const searchParams = useSearchParams()
   const selectedSessionId = searchParams.get("session")
   const isSessionsRoute = pathname.startsWith("/training/sessions")
+  const isExercisesRoute = pathname.startsWith("/training/exercises")
   const isProfileRoute = pathname.startsWith("/training/profile")
   const [sessionPendingDelete, setSessionPendingDelete] =
     useState<UserSession | null>(null)
@@ -135,16 +137,54 @@ export function NavProgram() {
             </SidebarMenuButton>
           </SidebarMenuItem>
 
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="Exercises"
-              isActive={pathname.startsWith("/training/exercises")}
-              render={<a href="/training/exercises" />}
+          <Collapsible
+            defaultOpen={isExercisesRoute}
+            className="group/collapsible"
+            render={<SidebarMenuItem />}
+          >
+            <CollapsibleTrigger
+              render={
+                <SidebarMenuButton
+                  tooltip="Exercises"
+                  isActive={isExercisesRoute}
+                />
+              }
             >
               <LibraryBigIcon />
               <span>Exercises</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+              <ChevronRightIcon className="ml-auto transition-transform duration-200 group-data-open/collapsible:rotate-90" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarMenuSub>
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton
+                    isActive={pathname === "/training/exercises"}
+                    render={<a href="/training/exercises" />}
+                  >
+                    <span>Exercise Library</span>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton
+                    isActive={pathname === "/training/exercises/types"}
+                    render={<a href="/training/exercises/types" />}
+                  >
+                    <TagsIcon />
+                    <span>Exercise Types</span>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton
+                    isActive={pathname === "/training/exercises/body-regions"}
+                    render={<a href="/training/exercises/body-regions" />}
+                  >
+                    <TagsIcon />
+                    <span>Body Regions</span>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              </SidebarMenuSub>
+            </CollapsibleContent>
+          </Collapsible>
 
           <Collapsible
             defaultOpen={isSessionsRoute}

@@ -138,7 +138,7 @@ export function SessionDetails({
           onChange={(event) => onDraftNameChange(event.target.value)}
           onBlur={(event) => onSaveName(event.target.value)}
           placeholder="Session name"
-          className="h-10 rounded-md border-border px-3 text-base font-semibold shadow-xs focus-visible:ring-2 md:text-lg"
+          className="h-10 rounded-md border-border bg-background px-3 text-base font-semibold shadow-xs focus-visible:ring-2 md:text-lg"
         />
         <Button
           type="button"
@@ -187,10 +187,10 @@ export function SessionDetails({
             onChange={(event) => onDraftNotesChange(event.target.value)}
             onBlur={(event) => onSaveNotes(event.target.value)}
             placeholder="Session description"
-            className="min-h-32 resize-y"
+            className="min-h-32 resize-y bg-background"
           />
         ) : (
-          <div className="min-h-32 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs">
+          <div className="min-h-32 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs">
             {hasDescription ? (
               <div className="space-y-2 leading-6">
                 <MarkdownPreview content={draftNotes} />

@@ -309,6 +309,190 @@ export interface Database {
           },
         ]
       }
+      user_exercise_types: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          description: string | null
+          display_color: string | null
+          sort_key: string
+          is_system: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          description?: string | null
+          display_color?: string | null
+          sort_key: string
+          is_system?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          description?: string | null
+          display_color?: string | null
+          sort_key?: string
+          is_system?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_exercise_types_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_exercise_body_regions: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          description: string | null
+          display_color: string | null
+          sort_key: string
+          is_system: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          description?: string | null
+          display_color?: string | null
+          sort_key: string
+          is_system?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          description?: string | null
+          display_color?: string | null
+          sort_key?: string
+          is_system?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_exercise_body_regions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_exercise_type_assignments: {
+        Row: {
+          user_id: string
+          exercise_id: string
+          type_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          exercise_id: string
+          type_id: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          exercise_id?: string
+          type_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_exercise_type_assignments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName:
+              "user_exercise_type_assignments_user_id_exercise_id_fkey"
+            columns: ["user_id", "exercise_id"]
+            isOneToOne: false
+            referencedRelation: "user_exercises"
+            referencedColumns: ["user_id", "id"]
+          },
+          {
+            foreignKeyName:
+              "user_exercise_type_assignments_user_id_type_id_fkey"
+            columns: ["user_id", "type_id"]
+            isOneToOne: false
+            referencedRelation: "user_exercise_types"
+            referencedColumns: ["user_id", "id"]
+          },
+        ]
+      }
+      user_exercise_body_region_assignments: {
+        Row: {
+          user_id: string
+          exercise_id: string
+          body_region_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          exercise_id: string
+          body_region_id: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          exercise_id?: string
+          body_region_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_exercise_body_region_assignments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName:
+              "user_exercise_body_region_assignments_user_id_exercise_id_fkey"
+            columns: ["user_id", "exercise_id"]
+            isOneToOne: false
+            referencedRelation: "user_exercises"
+            referencedColumns: ["user_id", "id"]
+          },
+          {
+            foreignKeyName:
+              "user_exercise_body_region_assignments_user_id_body_region_id_fkey"
+            columns: ["user_id", "body_region_id"]
+            isOneToOne: false
+            referencedRelation: "user_exercise_body_regions"
+            referencedColumns: ["user_id", "id"]
+          },
+        ]
+      }
       user_exercises: {
         Row: {
           id: string
@@ -317,7 +501,6 @@ export interface Database {
           notes: string | null
           image_url: string | null
           video_url: string | null
-          tags: string[] | null
           performance: Json | null
           created_at: string
           updated_at: string
@@ -329,7 +512,6 @@ export interface Database {
           notes?: string | null
           image_url?: string | null
           video_url?: string | null
-          tags?: string[] | null
           performance?: Json | null
           created_at?: string
           updated_at?: string
@@ -341,7 +523,6 @@ export interface Database {
           notes?: string | null
           image_url?: string | null
           video_url?: string | null
-          tags?: string[] | null
           performance?: Json | null
           created_at?: string
           updated_at?: string
@@ -607,6 +788,30 @@ export type UserIssueQualityRelationshipInsert =
   TableInsert<"user_issue_quality_relationships">
 export type UserIssueQualityRelationshipUpdate =
   TableUpdate<"user_issue_quality_relationships">
+
+export type UserExerciseType = TableRow<"user_exercise_types">
+export type UserExerciseTypeInsert = TableInsert<"user_exercise_types">
+export type UserExerciseTypeUpdate = TableUpdate<"user_exercise_types">
+
+export type UserExerciseBodyRegion = TableRow<"user_exercise_body_regions">
+export type UserExerciseBodyRegionInsert =
+  TableInsert<"user_exercise_body_regions">
+export type UserExerciseBodyRegionUpdate =
+  TableUpdate<"user_exercise_body_regions">
+
+export type UserExerciseTypeAssignment =
+  TableRow<"user_exercise_type_assignments">
+export type UserExerciseTypeAssignmentInsert =
+  TableInsert<"user_exercise_type_assignments">
+export type UserExerciseTypeAssignmentUpdate =
+  TableUpdate<"user_exercise_type_assignments">
+
+export type UserExerciseBodyRegionAssignment =
+  TableRow<"user_exercise_body_region_assignments">
+export type UserExerciseBodyRegionAssignmentInsert =
+  TableInsert<"user_exercise_body_region_assignments">
+export type UserExerciseBodyRegionAssignmentUpdate =
+  TableUpdate<"user_exercise_body_region_assignments">
 
 export type UserExercise = TableRow<"user_exercises">
 export type UserExerciseInsert = TableInsert<"user_exercises">

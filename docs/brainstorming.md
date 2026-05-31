@@ -106,7 +106,8 @@ A movement. Same entity for strength, mobility, activation, and cardio — only 
 ```
 Exercise
   - name
-  - category: strength | mobility | activation | cardio | swim | etc.
+  - types: refs to ExerciseType (mobility, activation, strength, coordination, etc.; can be custom)
+  - body_regions: refs to ExerciseBodyRegion (shoulders, lower leg, chest, etc.; can be custom)
   - qualities_hit: list of ExerciseQualityLink (see below)
   - default_load_rep_scheme (strength)
   - default_duration_distance_zone (cardio)
@@ -114,7 +115,31 @@ Exercise
   - notes
 ```
 
-**Cardio as exercise:** Running, biking, swimming are modeled as exercises rather than a separate entity. Easy run, long run, tempo run, strides each become "exercises" tagged to qualities. This avoids parallel logging systems.
+**Types and body regions are taxonomy, not qualities:** Exercise types and body regions are user-owned taxonomy rows attached through assignment tables. They are for library organization and session-builder filtering. The deeper "what quality does this train?" relationship belongs in `ExerciseQualityLink`, not in exercise tags.
+
+**Cardio as exercise:** Running, biking, swimming are modeled as exercises rather than a separate entity. Easy run, long run, tempo run, strides each become "exercises" linked to qualities. This avoids parallel logging systems.
+
+### ExerciseType / ExerciseBodyRegion
+
+User-owned taxonomy options for filtering and organizing exercises. The system can have built-in/default rows later, but users can create custom rows while the taxonomy is still evolving.
+
+```
+ExerciseType
+  - name
+  - description
+  - display_color
+  - sort_key
+  - is_system
+
+ExerciseBodyRegion
+  - name
+  - description
+  - display_color
+  - sort_key
+  - is_system
+```
+
+**Why tables instead of text arrays:** These values need stable IDs, sorting, custom user-created options, and many-to-many assignment without typo drift. Exercise type and body region assignments are separate bridge tables.
 
 ### ExerciseQualityLink
 

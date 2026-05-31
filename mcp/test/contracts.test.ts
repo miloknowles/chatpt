@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   DeleteUserExerciseInputSchema,
   CreateUserSessionInputSchema,
-  ListUserExerciseTagsInputSchema,
+  ListUserExerciseTaxonomyInputSchema,
   UpdateUserExerciseInputSchema,
   UpdateUserMetadataInputSchema,
   UpdateUserQualityStatusInputSchema,
@@ -48,8 +48,8 @@ describe("domain contracts", () => {
     expect(parsed.exerciseId).toBe("65539cd0-f403-4613-b7ac-c6f8104eec8d")
   })
 
-  it("accepts an empty list exercise tags payload", () => {
-    const parsed = ListUserExerciseTagsInputSchema.parse({})
+  it("accepts an empty list exercise taxonomy payload", () => {
+    const parsed = ListUserExerciseTaxonomyInputSchema.parse({})
     expect(parsed).toEqual({})
   })
 

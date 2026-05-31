@@ -22,6 +22,7 @@ import { ExerciseLibraryTable } from "./exercise-library-table"
 import {
   EMPTY_FORM_VALUES,
   type ExerciseFormValues,
+  type ExerciseTaxonomyItem,
   type UserExercise,
 } from "./types"
 import { toFormValues, toPayload } from "./utils"
@@ -43,7 +44,8 @@ export function ExerciseLibrary() {
 
   const {
     exercises,
-    availableTags,
+    exerciseTypes,
+    bodyRegions,
     page,
     totalPages,
     isLoading,
@@ -53,6 +55,7 @@ export function ExerciseLibrary() {
     setPage,
     createExercise,
     updateExercise,
+    updateExerciseTaxonomyItem,
     deleteExercise,
   } = useUserExercises({ pageSize: 10, searchQuery: debouncedSearchQuery })
 
@@ -121,6 +124,40 @@ export function ExerciseLibrary() {
     }
 
     setIsSheetOpen(false)
+  }
+
+  async function handleUpdateTaxonomyItem(
+    kind: "type" | "body_region",
+    item: ExerciseTaxonomyItem,
+    values: { name: string; display_color: string | null }
+  ) {
+    const result = await updateExerciseTaxonomyItem({
+      kind,
+      itemId: item.id,
+      name: values.name,
+      description: item.description,
+      display_color: values.display_color,
+    })
+
+    if (!result.error) {
+      setFormValues((current) => ({
+        ...current,
+        types:
+          kind === "type"
+            ? current.types.map((value) =>
+                value.id === item.id ? { ...value, ...values } : value
+              )
+            : current.types,
+        bodyRegions:
+          kind === "body_region"
+            ? current.bodyRegions.map((value) =>
+                value.id === item.id ? { ...value, ...values } : value
+              )
+            : current.bodyRegions,
+      }))
+    }
+
+    return result
   }
 
   function openDeleteDialog(exercise: UserExercise) {
@@ -266,9 +303,11 @@ export function ExerciseLibrary() {
         isSubmitting={isSubmitting}
         formValues={formValues}
         formError={formError}
-        availableTags={availableTags}
+        exerciseTypes={exerciseTypes}
+        bodyRegions={bodyRegions}
         onOpenChange={setIsSheetOpen}
         onFieldChange={handleFieldChange}
+        onUpdateTaxonomyItem={handleUpdateTaxonomyItem}
         onSubmit={handleSubmit}
       />
     </div>

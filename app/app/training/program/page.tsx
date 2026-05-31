@@ -32,7 +32,7 @@ export default async function TrainingProgramPage() {
         >
           <p className="font-medium text-foreground">Exercise Library</p>
           <p className="mt-1 text-muted-foreground">
-            Manage exercises, tags, media, and default prescriptions.
+            Manage exercises, taxonomy, media, and default prescriptions.
           </p>
         </Link>
         <Link

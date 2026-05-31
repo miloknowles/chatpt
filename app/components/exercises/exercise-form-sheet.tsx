@@ -15,8 +15,8 @@ import {
 } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
 
-import { TagMultiSelect } from "./tag-multi-select"
-import type { ExerciseFormValues } from "./types"
+import { TaxonomyMultiSelect } from "./tag-multi-select"
+import type { ExerciseFormValues, ExerciseTaxonomyItem } from "./types"
 
 type ExerciseFormSheetProps = {
   open: boolean
@@ -25,12 +25,18 @@ type ExerciseFormSheetProps = {
   isSubmitting: boolean
   formValues: ExerciseFormValues
   formError: string | null
-  availableTags: string[]
+  exerciseTypes: ExerciseTaxonomyItem[]
+  bodyRegions: ExerciseTaxonomyItem[]
   onOpenChange: (open: boolean) => void
   onFieldChange: <K extends keyof ExerciseFormValues>(
     field: K,
     value: ExerciseFormValues[K]
   ) => void
+  onUpdateTaxonomyItem: (
+    kind: "type" | "body_region",
+    item: ExerciseTaxonomyItem,
+    values: { name: string; display_color: string | null }
+  ) => Promise<{ error?: string }>
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }
 
@@ -41,9 +47,11 @@ export function ExerciseFormSheet({
   isSubmitting,
   formValues,
   formError,
-  availableTags,
+  exerciseTypes,
+  bodyRegions,
   onOpenChange,
   onFieldChange,
+  onUpdateTaxonomyItem,
   onSubmit,
 }: ExerciseFormSheetProps) {
   return (
@@ -106,11 +114,34 @@ export function ExerciseFormSheet({
             </div>
 
             <div className="space-y-2">
-              <Label>Tags</Label>
-              <TagMultiSelect
-                options={availableTags}
-                values={formValues.tags}
-                onChange={(nextTags) => onFieldChange("tags", nextTags)}
+              <Label>Types</Label>
+              <TaxonomyMultiSelect
+                label="Exercise types"
+                createLabel="Create type"
+                emptyLabel="Select exercise types"
+                options={exerciseTypes}
+                values={formValues.types}
+                onChange={(nextTypes) => onFieldChange("types", nextTypes)}
+                onUpdateItem={(item, values) =>
+                  onUpdateTaxonomyItem("type", item, values)
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Body Regions</Label>
+              <TaxonomyMultiSelect
+                label="Body Regions"
+                createLabel="Create Body Region"
+                emptyLabel="Select Body Regions"
+                options={bodyRegions}
+                values={formValues.bodyRegions}
+                onChange={(nextBodyRegions) =>
+                  onFieldChange("bodyRegions", nextBodyRegions)
+                }
+                onUpdateItem={(item, values) =>
+                  onUpdateTaxonomyItem("body_region", item, values)
+                }
               />
             </div>
 

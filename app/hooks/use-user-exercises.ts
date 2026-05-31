@@ -7,10 +7,13 @@ import { useAuth } from "@/components/auth-provider"
 import {
   useCreateExerciseMutation,
   useDeleteExerciseMutation,
+  useGetExerciseBodyRegionsQuery,
+  useGetExerciseTypesQuery,
   useGetExercisesQuery,
-  useGetExerciseTagsQuery,
   useUpdateExerciseMutation,
+  useUpdateExerciseTaxonomyItemMutation,
   type ExercisePayload,
+  type ExerciseTaxonomyUpdatePayload,
 } from "@/lib/redux/training-api"
 
 import {
@@ -40,7 +43,7 @@ export function useUserExercises({
           searchQuery: normalizedSearchQuery,
         }
       : skipToken
-  const tagsArgs =
+  const taxonomyArgs =
     user && !isAuthLoading
       ? {
           userId: user.id,
@@ -48,11 +51,14 @@ export function useUserExercises({
       : skipToken
 
   const exercisesQuery = useGetExercisesQuery(queryArgs)
-  const tagsQuery = useGetExerciseTagsQuery(tagsArgs)
+  const exerciseTypesQuery = useGetExerciseTypesQuery(taxonomyArgs)
+  const bodyRegionsQuery = useGetExerciseBodyRegionsQuery(taxonomyArgs)
   const [createExerciseMutation, createExerciseState] =
     useCreateExerciseMutation()
   const [updateExerciseMutation, updateExerciseState] =
     useUpdateExerciseMutation()
+  const [updateExerciseTaxonomyItemMutation, updateExerciseTaxonomyItemState] =
+    useUpdateExerciseTaxonomyItemMutation()
   const [deleteExerciseMutation, deleteExerciseState] =
     useDeleteExerciseMutation()
 
@@ -65,10 +71,12 @@ export function useUserExercises({
   const isMutating =
     createExerciseState.isLoading ||
     updateExerciseState.isLoading ||
+    updateExerciseTaxonomyItemState.isLoading ||
     deleteExerciseState.isLoading
   const mutationError =
     getRtkErrorMessage(createExerciseState.error) ??
     getRtkErrorMessage(updateExerciseState.error) ??
+    getRtkErrorMessage(updateExerciseTaxonomyItemState.error) ??
     getRtkErrorMessage(deleteExerciseState.error)
 
   const createExercise = useCallback(
@@ -129,6 +137,25 @@ export function useUserExercises({
     [deleteExerciseMutation, page, pageSize, totalCount, user]
   )
 
+  const updateExerciseTaxonomyItem = useCallback(
+    async (payload: ExerciseTaxonomyUpdatePayload): HookActionResult => {
+      if (!user) {
+        return { error: "You must be signed in." }
+      }
+
+      try {
+        await updateExerciseTaxonomyItemMutation({
+          userId: user.id,
+          payload,
+        }).unwrap()
+        return {}
+      } catch (error) {
+        return { error: getThrownErrorMessage(error) }
+      }
+    },
+    [updateExerciseTaxonomyItemMutation, user]
+  )
+
   const refresh = useCallback(
     async (requestedPage = page) => {
       if (requestedPage !== page) {
@@ -136,36 +163,52 @@ export function useUserExercises({
         return
       }
 
-      await Promise.all([exercisesQuery.refetch(), tagsQuery.refetch()])
+      await Promise.all([
+        exercisesQuery.refetch(),
+        exerciseTypesQuery.refetch(),
+        bodyRegionsQuery.refetch(),
+      ])
     },
-    [exercisesQuery, page, tagsQuery]
+    [bodyRegionsQuery, exerciseTypesQuery, exercisesQuery, page]
   )
 
   return useMemo(
     () => ({
       exercises,
-      availableTags: tagsQuery.data ?? [],
+      exerciseTypes: exerciseTypesQuery.data ?? [],
+      bodyRegions: bodyRegionsQuery.data ?? [],
       totalCount,
       page,
       pageSize,
       totalPages,
       isLoading:
-        isAuthLoading || exercisesQuery.isFetching || tagsQuery.isFetching,
+        isAuthLoading ||
+        exercisesQuery.isFetching ||
+        exerciseTypesQuery.isFetching ||
+        bodyRegionsQuery.isFetching,
       isMutating,
       error:
         getRtkErrorMessage(exercisesQuery.error) ??
-        getRtkErrorMessage(tagsQuery.error),
+        getRtkErrorMessage(exerciseTypesQuery.error) ??
+        getRtkErrorMessage(bodyRegionsQuery.error),
       mutationError,
       setPage,
       refresh,
       createExercise,
       updateExercise,
+      updateExerciseTaxonomyItem,
       deleteExercise,
     }),
     [
       createExercise,
       deleteExercise,
       exercises,
+      bodyRegionsQuery.data,
+      bodyRegionsQuery.error,
+      bodyRegionsQuery.isFetching,
+      exerciseTypesQuery.data,
+      exerciseTypesQuery.error,
+      exerciseTypesQuery.isFetching,
       exercisesQuery.error,
       exercisesQuery.isFetching,
       isAuthLoading,
@@ -174,12 +217,10 @@ export function useUserExercises({
       page,
       pageSize,
       refresh,
-      tagsQuery.data,
-      tagsQuery.error,
-      tagsQuery.isFetching,
       totalCount,
       totalPages,
       updateExercise,
+      updateExerciseTaxonomyItem,
     ]
   )
 }

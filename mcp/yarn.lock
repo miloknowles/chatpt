@@ -7,10 +7,10 @@ __metadata:
 
 "@chatpt/domain-contracts@file:../packages/domain-contracts::locator=%40chatpt%2Fmcp-server%40workspace%3A.":
   version: 0.1.0
-  resolution: "@chatpt/domain-contracts@file:../packages/domain-contracts#../packages/domain-contracts::hash=5b9e03&locator=%40chatpt%2Fmcp-server%40workspace%3A."
+  resolution: "@chatpt/domain-contracts@file:../packages/domain-contracts#../packages/domain-contracts::hash=98eb39&locator=%40chatpt%2Fmcp-server%40workspace%3A."
   dependencies:
     zod: "npm:^3.25.0"
-  checksum: 10c0/cbf2138d3161be5ae5dc024146cce899ce13b22e59e8bd47c6de2d1b75e9152563e879127f8bc4e405dc76e54f19444e934fac78fad119771999d1db878b0332
+  checksum: 10c0/573c5fcdfc5b93c5058a9a51ddbaa2ca9f5d72df5f014a4edf7b48f06def7167543e4d14c563806c2909bb90bcbe13a65452f7cb358b004799eb47e52d55814b
   languageName: node
   linkType: hard
 

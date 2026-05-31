@@ -3,7 +3,7 @@ import type {
   DeleteUserExerciseInput,
   CreateUserNoteInput,
   CreateUserSessionInput,
-  ListUserExerciseTagsInput,
+  ListUserExerciseTaxonomyInput,
   ListUserExercisesInput,
   ListUserSessionsInput,
   LogUserExerciseInput,
@@ -14,6 +14,115 @@ import type {
 } from "@chatpt/domain-contracts"
 
 import { getAuthContext } from "../lib/supabase.js"
+
+function uniqueIds(ids: string[] | null | undefined) {
+  return Array.from(new Set(ids ?? []))
+}
+
+async function replaceAssignments({
+  supabase,
+  userId,
+  exerciseId,
+  table,
+  idColumn,
+  ids,
+}: {
+  supabase: Awaited<ReturnType<typeof getAuthContext>>["supabase"]
+  userId: string
+  exerciseId: string
+  table:
+    | "user_exercise_type_assignments"
+    | "user_exercise_body_region_assignments"
+  idColumn: "type_id" | "body_region_id"
+  ids: string[] | null | undefined
+}) {
+  const { error: deleteError } = await supabase
+    .from(table)
+    .delete()
+    .eq("user_id", userId)
+    .eq("exercise_id", exerciseId)
+
+  if (deleteError) {
+    throw new Error(deleteError.message)
+  }
+
+  const assignmentIds = uniqueIds(ids)
+  if (assignmentIds.length === 0) {
+    return
+  }
+
+  const { error: insertError } = await supabase.from(table).insert(
+    assignmentIds.map((id) => ({
+      user_id: userId,
+      exercise_id: exerciseId,
+      [idColumn]: id,
+    }))
+  )
+
+  if (insertError) {
+    throw new Error(insertError.message)
+  }
+}
+
+async function loadExerciseTaxonomy(
+  supabase: Awaited<ReturnType<typeof getAuthContext>>["supabase"],
+  userId: string,
+  exerciseIds: string[]
+) {
+  const typeRowsByExerciseId = new Map<string, unknown[]>()
+  const bodyRegionRowsByExerciseId = new Map<string, unknown[]>()
+
+  if (exerciseIds.length === 0) {
+    return { typeRowsByExerciseId, bodyRegionRowsByExerciseId }
+  }
+
+  const { data: typeAssignments, error: typeAssignmentsError } = await supabase
+    .from("user_exercise_type_assignments")
+    .select("exercise_id,type:user_exercise_types(*)")
+    .eq("user_id", userId)
+    .in("exercise_id", exerciseIds)
+
+  if (typeAssignmentsError) {
+    throw new Error(typeAssignmentsError.message)
+  }
+
+  for (const assignment of typeAssignments ?? []) {
+    const exerciseId = assignment.exercise_id as string
+    const type = assignment.type
+    if (!type) {
+      continue
+    }
+
+    const rows = typeRowsByExerciseId.get(exerciseId) ?? []
+    rows.push(type)
+    typeRowsByExerciseId.set(exerciseId, rows)
+  }
+
+  const { data: bodyRegionAssignments, error: bodyRegionAssignmentsError } =
+    await supabase
+      .from("user_exercise_body_region_assignments")
+      .select("exercise_id,body_region:user_exercise_body_regions(*)")
+      .eq("user_id", userId)
+      .in("exercise_id", exerciseIds)
+
+  if (bodyRegionAssignmentsError) {
+    throw new Error(bodyRegionAssignmentsError.message)
+  }
+
+  for (const assignment of bodyRegionAssignments ?? []) {
+    const exerciseId = assignment.exercise_id as string
+    const bodyRegion = assignment.body_region
+    if (!bodyRegion) {
+      continue
+    }
+
+    const rows = bodyRegionRowsByExerciseId.get(exerciseId) ?? []
+    rows.push(bodyRegion)
+    bodyRegionRowsByExerciseId.set(exerciseId, rows)
+  }
+
+  return { typeRowsByExerciseId, bodyRegionRowsByExerciseId }
+}
 
 export async function whoAmI(_input: WhoAmIInput, accessToken: string) {
   const { supabase, userId } = await getAuthContext(accessToken)
@@ -128,7 +237,7 @@ export async function listUserExercises(
 
   const { data, error } = await supabase
     .from("user_exercises")
-    .select("id,name,notes,image_url,video_url,tags,performance,created_at,updated_at")
+    .select("id,name,notes,image_url,video_url,performance,created_at,updated_at")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false })
     .limit(input.limit)
@@ -137,38 +246,55 @@ export async function listUserExercises(
     throw new Error(error.message)
   }
 
+  const exercises = data ?? []
+  const { typeRowsByExerciseId, bodyRegionRowsByExerciseId } =
+    await loadExerciseTaxonomy(
+      supabase,
+      userId,
+      exercises.map((exercise) => exercise.id)
+    )
+
   return {
-    exercises: data ?? [],
+    exercises: exercises.map((exercise) => ({
+      ...exercise,
+      types: typeRowsByExerciseId.get(exercise.id) ?? [],
+      body_regions: bodyRegionRowsByExerciseId.get(exercise.id) ?? [],
+    })),
     count: data?.length ?? 0,
   }
 }
 
-export async function listUserExerciseTags(
-  _input: ListUserExerciseTagsInput,
+export async function listUserExerciseTaxonomy(
+  _input: ListUserExerciseTaxonomyInput,
   accessToken: string
 ) {
   const { supabase, userId } = await getAuthContext(accessToken)
 
-  const { data, error } = await supabase
-    .from("user_exercises")
-    .select("tags")
+  const { data: types, error: typesError } = await supabase
+    .from("user_exercise_types")
+    .select("id,name,description,display_color,sort_key,is_system,created_at,updated_at")
     .eq("user_id", userId)
+    .order("sort_key", { ascending: true })
+    .order("name", { ascending: true })
 
-  if (error) {
-    throw new Error(error.message)
+  if (typesError) {
+    throw new Error(typesError.message)
   }
 
-  const tags = Array.from(
-    new Set(
-      (data ?? [])
-        .flatMap((exercise) => exercise.tags ?? [])
-        .filter((tag): tag is string => typeof tag === "string" && tag.length > 0)
-    )
-  ).sort((a, b) => a.localeCompare(b))
+  const { data: bodyRegions, error: bodyRegionsError } = await supabase
+    .from("user_exercise_body_regions")
+    .select("id,name,description,display_color,sort_key,is_system,created_at,updated_at")
+    .eq("user_id", userId)
+    .order("sort_key", { ascending: true })
+    .order("name", { ascending: true })
+
+  if (bodyRegionsError) {
+    throw new Error(bodyRegionsError.message)
+  }
 
   return {
-    tags,
-    count: tags.length,
+    types: types ?? [],
+    bodyRegions: bodyRegions ?? [],
   }
 }
 
@@ -186,18 +312,38 @@ export async function createUserExercise(
       notes: input.notes ?? null,
       image_url: input.imageUrl ?? null,
       video_url: input.videoUrl ?? null,
-      tags: input.tags ?? null,
       performance: input.performance ?? null,
     })
-    .select("id,name,notes,image_url,video_url,tags,performance,created_at,updated_at")
+    .select("id,name,notes,image_url,video_url,performance,created_at,updated_at")
     .single()
 
   if (error) {
     throw new Error(error.message)
   }
 
+  await replaceAssignments({
+    supabase,
+    userId,
+    exerciseId: data.id,
+    table: "user_exercise_type_assignments",
+    idColumn: "type_id",
+    ids: input.exerciseTypeIds,
+  })
+  await replaceAssignments({
+    supabase,
+    userId,
+    exerciseId: data.id,
+    table: "user_exercise_body_region_assignments",
+    idColumn: "body_region_id",
+    ids: input.bodyRegionIds,
+  })
+
   return {
-    exercise: data,
+    exercise: {
+      ...data,
+      types: [],
+      body_regions: [],
+    },
   }
 }
 
@@ -212,7 +358,6 @@ export async function updateUserExercise(
   if (input.notes !== undefined) updates.notes = input.notes
   if (input.imageUrl !== undefined) updates.image_url = input.imageUrl
   if (input.videoUrl !== undefined) updates.video_url = input.videoUrl
-  if (input.tags !== undefined) updates.tags = input.tags
   if (input.performance !== undefined) updates.performance = input.performance
 
   const { data, error } = await supabase
@@ -220,15 +365,44 @@ export async function updateUserExercise(
     .update(updates)
     .eq("user_id", userId)
     .eq("id", input.exerciseId)
-    .select("id,name,notes,image_url,video_url,tags,performance,created_at,updated_at")
+    .select("id,name,notes,image_url,video_url,performance,created_at,updated_at")
     .single()
 
   if (error) {
     throw new Error(error.message)
   }
 
+  if (input.exerciseTypeIds !== undefined) {
+    await replaceAssignments({
+      supabase,
+      userId,
+      exerciseId: input.exerciseId,
+      table: "user_exercise_type_assignments",
+      idColumn: "type_id",
+      ids: input.exerciseTypeIds,
+    })
+  }
+
+  if (input.bodyRegionIds !== undefined) {
+    await replaceAssignments({
+      supabase,
+      userId,
+      exerciseId: input.exerciseId,
+      table: "user_exercise_body_region_assignments",
+      idColumn: "body_region_id",
+      ids: input.bodyRegionIds,
+    })
+  }
+
+  const { typeRowsByExerciseId, bodyRegionRowsByExerciseId } =
+    await loadExerciseTaxonomy(supabase, userId, [input.exerciseId])
+
   return {
-    exercise: data,
+    exercise: {
+      ...data,
+      types: typeRowsByExerciseId.get(input.exerciseId) ?? [],
+      body_regions: bodyRegionRowsByExerciseId.get(input.exerciseId) ?? [],
+    },
   }
 }
 

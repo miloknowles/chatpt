@@ -11,6 +11,10 @@ const realtimeTables = [
   "user_issues",
   "user_qualities",
   "user_exercises",
+  "user_exercise_types",
+  "user_exercise_body_regions",
+  "user_exercise_type_assignments",
+  "user_exercise_body_region_assignments",
   "user_sessions",
   "user_supersets",
   "user_logged_exercises",
@@ -62,7 +66,22 @@ export function DataRealtimeBridge() {
             dispatch(
               trainingApi.util.invalidateTags([
                 { type: "Exercises", id: "LIST" },
-                { type: "ExerciseTags", id: "LIST" },
+                { type: "ExerciseTaxonomy", id: "LIST" },
+              ])
+            )
+            return
+          }
+
+          if (
+            table === "user_exercise_types" ||
+            table === "user_exercise_body_regions" ||
+            table === "user_exercise_type_assignments" ||
+            table === "user_exercise_body_region_assignments"
+          ) {
+            dispatch(
+              trainingApi.util.invalidateTags([
+                { type: "Exercises", id: "LIST" },
+                { type: "ExerciseTaxonomy", id: "LIST" },
               ])
             )
             return

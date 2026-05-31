@@ -11,7 +11,8 @@ Primary context for this repository is in:
 
 ## Local Development Guidance
 
-- Do not start dev servers to test changes. If a dev server is already running, you may use that existing server for verification.
+- Do not start dev servers to test changes.
+- Do not use browser automation or browser-based checks to verify changes; leave browser verification to the user.
 - Do not run `yarn build` while the dev server is running; it can corrupt the active dev server state.
 
 ## Supabase Guidance

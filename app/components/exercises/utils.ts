@@ -1,6 +1,10 @@
 import type { Json } from "@/types/database"
 
-import type { ExerciseFormValues, UserExercise } from "./types"
+import type {
+  ExerciseFormValues,
+  ExerciseTaxonomySelection,
+  UserExercise,
+} from "./types"
 
 export function parsePerformanceToFormValues(
   performance: Json | null
@@ -115,8 +119,40 @@ export function toFormValues(exercise: UserExercise): ExerciseFormValues {
     notes: exercise.notes ?? "",
     imageUrl: exercise.image_url ?? "",
     videoUrl: exercise.video_url ?? "",
-    tags: exercise.tags ?? [],
+    types: exercise.types.map((type) => ({
+      id: type.id,
+      name: type.name,
+      display_color: type.display_color,
+    })),
+    bodyRegions: exercise.body_regions.map((bodyRegion) => ({
+      id: bodyRegion.id,
+      name: bodyRegion.name,
+      display_color: bodyRegion.display_color,
+    })),
     ...performanceValues,
+  }
+}
+
+function toTaxonomyPayload(values: ExerciseTaxonomySelection[]) {
+  const existingIds = Array.from(
+    new Set(
+      values
+        .map((value) => value.id?.trim())
+        .filter((value): value is string => Boolean(value))
+    )
+  )
+  const customNames = Array.from(
+    new Set(
+      values
+        .filter((value) => !value.id)
+        .map((value) => value.name.trim())
+        .filter(Boolean)
+    )
+  )
+
+  return {
+    existingIds,
+    customNames,
   }
 }
 
@@ -126,10 +162,6 @@ export function toPayload(values: ExerciseFormValues) {
   if (!name) {
     return { error: "Name is required." }
   }
-
-  const tags = Array.from(
-    new Set(values.tags.map((tag) => tag.trim()).filter(Boolean))
-  )
 
   let performance: Json | null = null
 
@@ -147,8 +179,9 @@ export function toPayload(values: ExerciseFormValues) {
       notes: values.notes.trim() || null,
       image_url: values.imageUrl.trim() || null,
       video_url: values.videoUrl.trim() || null,
-      tags: tags.length ? tags : null,
       performance,
+      types: toTaxonomyPayload(values.types),
+      body_regions: toTaxonomyPayload(values.bodyRegions),
     },
   }
 }

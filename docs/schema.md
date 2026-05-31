@@ -88,12 +88,66 @@ create table user_exercises (
   notes text, -- can include cues or instructions
   image_url text, -- optional, used as a preview image for the exercise
   video_url text, -- optional, used to provide instructions or demos
-  tags text[], -- optional, used to categorize the exercise
   performance jsonb, -- default/prescribed: { sets: [{reps: 10, weight: 50}, ...], duration_s: 60, notes: "..." }
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (user_id, id),
   unique (user_id, name)
+);
+
+-- Exercise taxonomy
+-- User-owned; no rows are seeded by default. `is_system` can mark built-in rows
+-- added later, but rows still live in the user's namespace.
+create table user_exercise_types (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users on delete cascade not null,
+  name text not null,
+  description text,
+  display_color text,
+  sort_key text not null,
+  is_system boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, id),
+  unique (user_id, name),
+  check (length(btrim(name)) > 0)
+);
+
+create table user_exercise_body_regions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users on delete cascade not null,
+  name text not null,
+  description text,
+  display_color text,
+  sort_key text not null,
+  is_system boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, id),
+  unique (user_id, name),
+  check (length(btrim(name)) > 0)
+);
+
+create table user_exercise_type_assignments (
+  user_id uuid references auth.users on delete cascade not null,
+  exercise_id uuid not null,
+  type_id uuid not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, exercise_id, type_id),
+  foreign key (user_id, exercise_id) references user_exercises(user_id, id) on delete cascade,
+  foreign key (user_id, type_id) references user_exercise_types(user_id, id) on delete cascade
+);
+
+create table user_exercise_body_region_assignments (
+  user_id uuid references auth.users on delete cascade not null,
+  exercise_id uuid not null,
+  body_region_id uuid not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, exercise_id, body_region_id),
+  foreign key (user_id, exercise_id) references user_exercises(user_id, id) on delete cascade,
+  foreign key (user_id, body_region_id) references user_exercise_body_regions(user_id, id) on delete cascade
 );
 
 -- Sessions

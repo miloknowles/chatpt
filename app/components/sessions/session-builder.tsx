@@ -70,6 +70,7 @@ export function SessionBuilder() {
     mutationError: supersetMutationError,
     createSuperset,
     updateSuperset,
+    deleteSuperset,
   } = useUserSupersets(selectedSession?.id)
   const {
     loggedExercises,
@@ -321,6 +322,22 @@ export function SessionBuilder() {
     await updateSuperset(supersetId, { name: normalizedName })
   }
 
+  async function handleDeleteSuperset(supersetId: string) {
+    const result = await deleteSuperset(supersetId)
+
+    if (result.error) {
+      return false
+    }
+
+    setDraftSupersetNames((currentNames) => {
+      const nextNames = { ...currentNames }
+      delete nextNames[supersetId]
+      return nextNames
+    })
+
+    return true
+  }
+
   return (
     <div className="h-full min-h-0 space-y-4 md:space-y-0">
       {!selectedSession ? (
@@ -371,6 +388,7 @@ export function SessionBuilder() {
             <SupersetList
               supersets={orderedSupersets}
               isLoading={isSupersetLoading}
+              isMutating={isSupersetMutating}
               draggedSupersetId={draggedSupersetId}
               dragOverSupersetId={dragOverSupersetId}
               loggedExercisesBySupersetId={loggedExercisesBySupersetId}
@@ -400,6 +418,7 @@ export function SessionBuilder() {
               onSaveSupersetName={(supersetId, previousName) =>
                 void saveSupersetName(supersetId, previousName)
               }
+              onDeleteSuperset={handleDeleteSuperset}
             />
           </div>
         </div>
