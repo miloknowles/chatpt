@@ -79,22 +79,19 @@ export function UserSettingsForm({ initialDisplayName }: UserSettingsFormProps) 
   return (
     <div className="space-y-8">
       <form className="space-y-4" onSubmit={handleSubmit}>
-        <div className="flex items-end gap-4">
-          <div className="flex-1 space-y-2">
-            <Label htmlFor="display-name">Display Name</Label>
-            <Input
-              id="display-name"
-              name="display-name"
-              type="text"
-              autoComplete="name"
-              maxLength={64}
-              value={displayName}
-              onChange={(event) => setDisplayName(event.target.value)}
-              className="h-10 bg-background"
-              placeholder="Your name"
-            />
-          </div>
-          <AvatarUpload />
+        <div className="space-y-2">
+          <Label htmlFor="display-name">Display Name</Label>
+          <Input
+            id="display-name"
+            name="display-name"
+            type="text"
+            autoComplete="name"
+            maxLength={64}
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            className="h-10 bg-background"
+            placeholder="Your name"
+          />
         </div>
 
         <Button type="submit" disabled={isDisabled}>
@@ -104,6 +101,11 @@ export function UserSettingsForm({ initialDisplayName }: UserSettingsFormProps) 
         {info ? <p className="text-sm text-primary">{info}</p> : null}
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
       </form>
+
+      <section className="space-y-2">
+        <Label>Profile Image</Label>
+        <AvatarUpload />
+      </section>
 
       <section className="space-y-3">
         <div className="space-y-1">

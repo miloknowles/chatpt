@@ -61,7 +61,7 @@ export function TrainingShell({
       ? user.user_metadata.avatar_url
       : undefined
   const MobileHeaderIcon =
-    pathname === "/training/exercises"
+    pathname.startsWith("/training/exercises")
       ? LibraryBigIcon
       : pathname === "/training/profile"
         ? ClipboardCheckIcon
