@@ -5,6 +5,7 @@ import {
   DeleteUserExerciseInputSchema,
   CreateUserNoteInputSchema,
   CreateUserSessionInputSchema,
+  ListUserExerciseTagsInputSchema,
   ListUserExercisesInputSchema,
   ListUserSessionsInputSchema,
   LogUserExerciseInputSchema,
@@ -19,6 +20,7 @@ import {
   deleteUserExercise,
   createUserNote,
   createUserSession,
+  listUserExerciseTags,
   listUserExercises,
   listUserSessions,
   logUserExercise,
@@ -150,6 +152,21 @@ export function createTrainingMcpServer() {
       const input = ListUserExercisesInputSchema.parse(args)
       const accessToken = getAccessTokenFromExtra(extra)
       return asToolResult(await listUserExercises(input, accessToken))
+    }
+  )
+
+  server.registerTool(
+    "list_user_exercise_tags",
+    {
+      title: "List User Exercise Tags",
+      description:
+        "List all unique tags currently used by the authenticated user's exercise library.",
+      inputSchema: ListUserExerciseTagsInputSchema,
+    },
+    async (args: unknown, extra: unknown) => {
+      const input = ListUserExerciseTagsInputSchema.parse(args)
+      const accessToken = getAccessTokenFromExtra(extra)
+      return asToolResult(await listUserExerciseTags(input, accessToken))
     }
   )
 

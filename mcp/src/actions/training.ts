@@ -3,6 +3,7 @@ import type {
   DeleteUserExerciseInput,
   CreateUserNoteInput,
   CreateUserSessionInput,
+  ListUserExerciseTagsInput,
   ListUserExercisesInput,
   ListUserSessionsInput,
   LogUserExerciseInput,
@@ -139,6 +140,35 @@ export async function listUserExercises(
   return {
     exercises: data ?? [],
     count: data?.length ?? 0,
+  }
+}
+
+export async function listUserExerciseTags(
+  _input: ListUserExerciseTagsInput,
+  accessToken: string
+) {
+  const { supabase, userId } = await getAuthContext(accessToken)
+
+  const { data, error } = await supabase
+    .from("user_exercises")
+    .select("tags")
+    .eq("user_id", userId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const tags = Array.from(
+    new Set(
+      (data ?? [])
+        .flatMap((exercise) => exercise.tags ?? [])
+        .filter((tag): tag is string => typeof tag === "string" && tag.length > 0)
+    )
+  ).sort((a, b) => a.localeCompare(b))
+
+  return {
+    tags,
+    count: tags.length,
   }
 }
 

@@ -14,6 +14,7 @@ This MCP server now uses **Streamable HTTP** in **stateless mode**, so it can ru
 - `list_user_sessions`
 - `create_user_session`
 - `list_user_exercises`
+- `list_user_exercise_tags`
 - `create_user_exercise`
 - `update_user_exercise`
 - `delete_user_exercise`

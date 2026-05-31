@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   DeleteUserExerciseInputSchema,
   CreateUserSessionInputSchema,
+  ListUserExerciseTagsInputSchema,
   UpdateUserExerciseInputSchema,
   UpdateUserMetadataInputSchema,
   UpdateUserQualityStatusInputSchema,
@@ -45,6 +46,11 @@ describe("domain contracts", () => {
     })
 
     expect(parsed.exerciseId).toBe("65539cd0-f403-4613-b7ac-c6f8104eec8d")
+  })
+
+  it("accepts an empty list exercise tags payload", () => {
+    const parsed = ListUserExerciseTagsInputSchema.parse({})
+    expect(parsed).toEqual({})
   })
 
   it("accepts an empty auth_info payload", () => {
