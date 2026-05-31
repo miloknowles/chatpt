@@ -62,6 +62,33 @@ export type ExerciseTaxonomyDeletePayload = {
   itemId: string
 }
 
+export type ExerciseVideoUrlPayload = {
+  video_url: string | null
+}
+
+export type ExerciseImageUrlPayload = {
+  image_url: string | null
+}
+
+export type ExerciseUpdateMutationArgs = {
+  userId: string
+  exerciseId: string
+  payload: ExercisePayload
+  optimisticExercise?: UserExerciseWithTaxonomy
+}
+
+export type ExerciseVideoUrlMutationArgs = {
+  userId: string
+  exerciseId: string
+  payload: ExerciseVideoUrlPayload
+}
+
+export type ExerciseImageUrlMutationArgs = {
+  userId: string
+  exerciseId: string
+  payload: ExerciseImageUrlPayload
+}
+
 export type ExercisesQueryArgs = {
   userId: string
   page: number
@@ -596,6 +623,90 @@ export const trainingApi = createApi({
 
         return { data }
       },
+      async onQueryStarted({ payload }, { dispatch, getState, queryFulfilled }) {
+        const trimmedName = payload.name.trim()
+        const optimisticUpdatedAt = new Date().toISOString()
+        const taxonomyArgs =
+          payload.kind === "type"
+            ? trainingApi.util.selectCachedArgsForQuery(
+                getState(),
+                "getExerciseTypes"
+              )
+            : trainingApi.util.selectCachedArgsForQuery(
+                getState(),
+                "getExerciseBodyRegions"
+              )
+        const exerciseArgs = trainingApi.util.selectCachedArgsForQuery(
+          getState(),
+          "getExercises"
+        )
+        const patches = [
+          ...taxonomyArgs.map((args) =>
+            dispatch(
+              payload.kind === "type"
+                ? trainingApi.util.updateQueryData(
+                    "getExerciseTypes",
+                    args,
+                    (draft) => {
+                      const item = draft.find(
+                        (entry) => entry.id === payload.itemId
+                      )
+                      if (item) {
+                        item.name = trimmedName
+                        item.description = payload.description
+                        item.display_color = payload.display_color
+                        item.updated_at = optimisticUpdatedAt
+                      }
+                    }
+                  )
+                : trainingApi.util.updateQueryData(
+                    "getExerciseBodyRegions",
+                    args,
+                    (draft) => {
+                      const item = draft.find(
+                        (entry) => entry.id === payload.itemId
+                      )
+                      if (item) {
+                        item.name = trimmedName
+                        item.description = payload.description
+                        item.display_color = payload.display_color
+                        item.updated_at = optimisticUpdatedAt
+                      }
+                    }
+                  )
+            )
+          ),
+          ...exerciseArgs.map((args) =>
+            dispatch(
+              trainingApi.util.updateQueryData("getExercises", args, (draft) => {
+                for (const exercise of draft.exercises) {
+                  const entries =
+                    payload.kind === "type"
+                      ? exercise.types
+                      : exercise.body_regions
+
+                  for (const entry of entries) {
+                    if (entry.id === payload.itemId) {
+                      entry.name = trimmedName
+                      entry.description = payload.description
+                      entry.display_color = payload.display_color
+                      entry.updated_at = optimisticUpdatedAt
+                    }
+                  }
+                }
+              })
+            )
+          ),
+        ]
+
+        try {
+          await queryFulfilled
+        } catch {
+          for (const patch of patches) {
+            patch.undo()
+          }
+        }
+      },
       invalidatesTags: [listTag("Exercises"), listTag("ExerciseTaxonomy")],
     }),
     createExerciseTaxonomyItem: builder.mutation<
@@ -719,10 +830,7 @@ export const trainingApi = createApi({
       },
       invalidatesTags: [listTag("Exercises"), listTag("ExerciseTaxonomy")],
     }),
-    updateExercise: builder.mutation<
-      null,
-      { userId: string; exerciseId: string; payload: ExercisePayload }
-    >({
+    updateExercise: builder.mutation<null, ExerciseUpdateMutationArgs>({
       async queryFn({ userId, exerciseId, payload }) {
         const supabase = createClient()
         const exercisePayload = {
@@ -754,9 +862,146 @@ export const trainingApi = createApi({
 
         return { data: null }
       },
+      async onQueryStarted(
+        { exerciseId, optimisticExercise },
+        { dispatch, getState, queryFulfilled }
+      ) {
+        const cachedArgs = trainingApi.util.selectCachedArgsForQuery(
+          getState(),
+          "getExercises"
+        )
+        const patches = optimisticExercise
+          ? cachedArgs.map((args) =>
+              dispatch(
+                trainingApi.util.updateQueryData(
+                  "getExercises",
+                  args,
+                  (draft) => {
+                    const exercise = draft.exercises.find(
+                      (entry) => entry.id === exerciseId
+                    )
+                    if (exercise) {
+                      Object.assign(exercise, optimisticExercise)
+                    }
+                  }
+                )
+              )
+            )
+          : []
+
+        try {
+          await queryFulfilled
+        } catch {
+          for (const patch of patches) {
+            patch.undo()
+          }
+        }
+      },
       invalidatesTags: (_result, _error, { exerciseId }) => [
         listTag("Exercises"),
         listTag("ExerciseTaxonomy"),
+        { type: "Exercises", id: exerciseId },
+      ],
+    }),
+    updateExerciseVideoUrl: builder.mutation<null, ExerciseVideoUrlMutationArgs>({
+      async queryFn({ userId, exerciseId, payload }) {
+        const supabase = createClient()
+        const { error } = await supabase
+          .from("user_exercises")
+          .update({ video_url: payload.video_url })
+          .eq("id", exerciseId)
+          .eq("user_id", userId)
+
+        if (error) {
+          return { error: getErrorMessage(error) }
+        }
+
+        return { data: null }
+      },
+      async onQueryStarted(
+        { exerciseId, payload },
+        { dispatch, getState, queryFulfilled }
+      ) {
+        const optimisticUpdatedAt = new Date().toISOString()
+        const cachedArgs = trainingApi.util.selectCachedArgsForQuery(
+          getState(),
+          "getExercises"
+        )
+        const patches = cachedArgs.map((args) =>
+          dispatch(
+            trainingApi.util.updateQueryData("getExercises", args, (draft) => {
+              const exercise = draft.exercises.find(
+                (entry) => entry.id === exerciseId
+              )
+              if (exercise) {
+                exercise.video_url = payload.video_url
+                exercise.updated_at = optimisticUpdatedAt
+              }
+            })
+          )
+        )
+
+        try {
+          await queryFulfilled
+        } catch {
+          for (const patch of patches) {
+            patch.undo()
+          }
+        }
+      },
+      invalidatesTags: (_result, _error, { exerciseId }) => [
+        listTag("Exercises"),
+        { type: "Exercises", id: exerciseId },
+      ],
+    }),
+    updateExerciseImageUrl: builder.mutation<null, ExerciseImageUrlMutationArgs>({
+      async queryFn({ userId, exerciseId, payload }) {
+        const supabase = createClient()
+        const { error } = await supabase
+          .from("user_exercises")
+          .update({ image_url: payload.image_url })
+          .eq("id", exerciseId)
+          .eq("user_id", userId)
+
+        if (error) {
+          return { error: getErrorMessage(error) }
+        }
+
+        return { data: null }
+      },
+      async onQueryStarted(
+        { exerciseId, payload },
+        { dispatch, getState, queryFulfilled }
+      ) {
+        const optimisticUpdatedAt = new Date().toISOString()
+        const cachedArgs = trainingApi.util.selectCachedArgsForQuery(
+          getState(),
+          "getExercises"
+        )
+        const patches = cachedArgs.map((args) =>
+          dispatch(
+            trainingApi.util.updateQueryData("getExercises", args, (draft) => {
+              const exercise = draft.exercises.find(
+                (entry) => entry.id === exerciseId
+              )
+              if (exercise) {
+                exercise.image_url = payload.image_url
+                exercise.updated_at = optimisticUpdatedAt
+              }
+            })
+          )
+        )
+
+        try {
+          await queryFulfilled
+        } catch {
+          for (const patch of patches) {
+            patch.undo()
+          }
+        }
+      },
+      invalidatesTags: (_result, _error, { exerciseId }) => [
+        listTag("Exercises"),
         { type: "Exercises", id: exerciseId },
       ],
     }),
@@ -1512,6 +1757,8 @@ export const {
   useDeleteExerciseTaxonomyItemMutation,
   useCreateExerciseMutation,
   useUpdateExerciseMutation,
+  useUpdateExerciseImageUrlMutation,
+  useUpdateExerciseVideoUrlMutation,
   useDeleteExerciseMutation,
   useGetIssuesQuery,
   useCreateIssueMutation,

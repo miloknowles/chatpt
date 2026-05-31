@@ -1,12 +1,20 @@
 "use client"
 
+import { ImagePlusIcon, VideoIcon } from "lucide-react"
+
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 
 import { ExerciseActionsMenu } from "./exercise-actions-menu"
 import { ExerciseMedia } from "./exercise-media"
+import { TaxonomyDropdown } from "./tag-multi-select"
 import { getTaxonomyColorDotClass } from "./taxonomy-colors"
-import type { UserExercise } from "./types"
+import type {
+  ExerciseTaxonomyItem,
+  ExerciseTaxonomySelection,
+  UserExercise,
+} from "./types"
 import { formatDate } from "./utils"
 
 function TaxonomyDot({ color }: { color: string | null }) {
@@ -20,20 +28,40 @@ function TaxonomyDot({ color }: { color: string | null }) {
 
 type ExerciseLibraryTableProps = {
   exercises: UserExercise[]
+  exerciseTypes: ExerciseTaxonomyItem[]
+  bodyRegions: ExerciseTaxonomyItem[]
   isLoading: boolean
   emptyState: string | null
   isSubmitting: boolean
   onEdit: (exercise: UserExercise) => void
   onDelete: (exercise: UserExercise) => void
+  onAddPhoto: (exercise: UserExercise) => void
+  onAddVideo: (exercise: UserExercise) => void
+  onUpdateTaxonomyItem: (
+    kind: "type" | "body_region",
+    item: ExerciseTaxonomyItem,
+    values: { name: string; display_color: string | null }
+  ) => Promise<{ error?: string }>
+  onUpdateExerciseTaxonomy: (
+    exercise: UserExercise,
+    kind: "types" | "bodyRegions",
+    values: ExerciseTaxonomySelection[]
+  ) => Promise<void>
 }
 
 export function ExerciseLibraryTable({
   exercises,
+  exerciseTypes,
+  bodyRegions,
   isLoading,
   emptyState,
   isSubmitting,
   onEdit,
   onDelete,
+  onAddPhoto,
+  onAddVideo,
+  onUpdateTaxonomyItem,
+  onUpdateExerciseTaxonomy,
 }: ExerciseLibraryTableProps) {
   return (
     <div className="hidden min-h-0 flex-1 overflow-auto rounded-md border border-border/60 md:block">
@@ -114,43 +142,135 @@ export function ExerciseLibraryTable({
                 ) : null}
               </td>
               <td className="px-4 py-3 align-top">
-                {exercise.types.length ? (
-                  <div className="flex flex-wrap gap-1">
-                    {exercise.types.map((type) => (
-                      <Badge key={`${exercise.id}-type-${type.id}`} variant="outline">
-                        <TaxonomyDot color={type.display_color} />
-                        {type.name}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-muted-foreground">None</span>
-                )}
+                <TaxonomyDropdown
+                  label="Exercise Types"
+                  createLabel="Create type"
+                  options={exerciseTypes}
+                  values={exercise.types.map((type) => ({
+                    id: type.id,
+                    name: type.name,
+                    display_color: type.display_color,
+                  }))}
+                  trigger={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-auto min-h-8 w-full justify-start whitespace-normal px-1.5 py-1 text-left"
+                      disabled={isSubmitting}
+                      aria-label={`Edit exercise types for ${exercise.name}`}
+                    />
+                  }
+                  triggerChildren={
+                    exercise.types.length ? (
+                      <div className="flex flex-wrap gap-1">
+                        {exercise.types.map((type) => (
+                          <Badge
+                            key={`${exercise.id}-type-${type.id}`}
+                            variant="outline"
+                          >
+                            <TaxonomyDot color={type.display_color} />
+                            {type.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">None</span>
+                    )
+                  }
+                  onChange={(nextTypes) =>
+                    onUpdateExerciseTaxonomy(exercise, "types", nextTypes)
+                  }
+                  onUpdateItem={(item, values) =>
+                    onUpdateTaxonomyItem("type", item, values)
+                  }
+                />
               </td>
               <td className="px-4 py-3 align-top">
-                {exercise.body_regions.length ? (
-                  <div className="flex flex-wrap gap-1">
-                    {exercise.body_regions.map((bodyRegion) => (
-                      <Badge
-                        key={`${exercise.id}-region-${bodyRegion.id}`}
-                        variant="outline"
-                      >
-                        <TaxonomyDot color={bodyRegion.display_color} />
-                        {bodyRegion.name}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-muted-foreground">None</span>
-                )}
+                <TaxonomyDropdown
+                  label="Body Regions"
+                  createLabel="Create Body Region"
+                  options={bodyRegions}
+                  values={exercise.body_regions.map((bodyRegion) => ({
+                    id: bodyRegion.id,
+                    name: bodyRegion.name,
+                    display_color: bodyRegion.display_color,
+                  }))}
+                  trigger={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-auto min-h-8 w-full justify-start whitespace-normal px-1.5 py-1 text-left"
+                      disabled={isSubmitting}
+                      aria-label={`Edit body regions for ${exercise.name}`}
+                    />
+                  }
+                  triggerChildren={
+                    exercise.body_regions.length ? (
+                      <div className="flex flex-wrap gap-1">
+                        {exercise.body_regions.map((bodyRegion) => (
+                          <Badge
+                            key={`${exercise.id}-region-${bodyRegion.id}`}
+                            variant="outline"
+                          >
+                            <TaxonomyDot color={bodyRegion.display_color} />
+                            {bodyRegion.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">None</span>
+                    )
+                  }
+                  onChange={(nextBodyRegions) =>
+                    onUpdateExerciseTaxonomy(
+                      exercise,
+                      "bodyRegions",
+                      nextBodyRegions
+                    )
+                  }
+                  onUpdateItem={(item, values) =>
+                    onUpdateTaxonomyItem("body_region", item, values)
+                  }
+                />
               </td>
               <td className="px-4 py-3 align-top text-muted-foreground">
-                <ExerciseMedia
-                  exerciseName={exercise.name}
-                  imageUrl={exercise.image_url}
-                  videoUrl={exercise.video_url}
-                  emptyLabel="None"
-                />
+                <div className="flex flex-wrap items-start gap-3">
+                  <ExerciseMedia
+                    exerciseName={exercise.name}
+                    imageUrl={exercise.image_url}
+                    videoUrl={exercise.video_url}
+                    emptyLabel={exercise.video_url ? "None" : undefined}
+                    className="flex flex-wrap items-start gap-3 space-y-0"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    {!exercise.image_url ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-xs"
+                        disabled={isSubmitting}
+                        onClick={() => onAddPhoto(exercise)}
+                        aria-label={`Add photo for ${exercise.name}`}
+                        title="Add photo"
+                      >
+                        <ImagePlusIcon />
+                      </Button>
+                    ) : null}
+                    {!exercise.video_url ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-xs"
+                        disabled={isSubmitting}
+                        onClick={() => onAddVideo(exercise)}
+                        aria-label={`Add video link for ${exercise.name}`}
+                        title="Add video link"
+                      >
+                        <VideoIcon />
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
               </td>
               <td className="px-4 py-3 align-top text-muted-foreground">
                 {formatDate(exercise.updated_at)}

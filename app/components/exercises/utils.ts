@@ -138,13 +138,14 @@ function toTaxonomyPayload(values: ExerciseTaxonomySelection[]) {
     new Set(
       values
         .map((value) => value.id?.trim())
+        .filter((value) => !value?.startsWith("optimistic:"))
         .filter((value): value is string => Boolean(value))
     )
   )
   const customNames = Array.from(
     new Set(
       values
-        .filter((value) => !value.id)
+        .filter((value) => !value.id || value.id.startsWith("optimistic:"))
         .map((value) => value.name.trim())
         .filter(Boolean)
     )

@@ -11,9 +11,12 @@ import {
   useGetExerciseTypesQuery,
   useGetExercisesQuery,
   useUpdateExerciseMutation,
+  useUpdateExerciseImageUrlMutation,
+  useUpdateExerciseVideoUrlMutation,
   useUpdateExerciseTaxonomyItemMutation,
   type ExercisePayload,
   type ExerciseTaxonomyUpdatePayload,
+  type UserExerciseWithTaxonomy,
 } from "@/lib/redux/training-api"
 
 import {
@@ -57,6 +60,10 @@ export function useUserExercises({
     useCreateExerciseMutation()
   const [updateExerciseMutation, updateExerciseState] =
     useUpdateExerciseMutation()
+  const [updateExerciseImageUrlMutation, updateExerciseImageUrlState] =
+    useUpdateExerciseImageUrlMutation()
+  const [updateExerciseVideoUrlMutation, updateExerciseVideoUrlState] =
+    useUpdateExerciseVideoUrlMutation()
   const [updateExerciseTaxonomyItemMutation, updateExerciseTaxonomyItemState] =
     useUpdateExerciseTaxonomyItemMutation()
   const [deleteExerciseMutation, deleteExerciseState] =
@@ -71,11 +78,15 @@ export function useUserExercises({
   const isMutating =
     createExerciseState.isLoading ||
     updateExerciseState.isLoading ||
+    updateExerciseImageUrlState.isLoading ||
+    updateExerciseVideoUrlState.isLoading ||
     updateExerciseTaxonomyItemState.isLoading ||
     deleteExerciseState.isLoading
   const mutationError =
     getRtkErrorMessage(createExerciseState.error) ??
     getRtkErrorMessage(updateExerciseState.error) ??
+    getRtkErrorMessage(updateExerciseImageUrlState.error) ??
+    getRtkErrorMessage(updateExerciseVideoUrlState.error) ??
     getRtkErrorMessage(updateExerciseTaxonomyItemState.error) ??
     getRtkErrorMessage(deleteExerciseState.error)
 
@@ -96,7 +107,11 @@ export function useUserExercises({
   )
 
   const updateExercise = useCallback(
-    async (exerciseId: string, payload: ExercisePayload): HookActionResult => {
+    async (
+      exerciseId: string,
+      payload: ExercisePayload,
+      optimisticExercise?: UserExerciseWithTaxonomy
+    ): HookActionResult => {
       if (!user) {
         return { error: "You must be signed in." }
       }
@@ -106,6 +121,7 @@ export function useUserExercises({
           userId: user.id,
           exerciseId,
           payload,
+          optimisticExercise,
         }).unwrap()
         return {}
       } catch (error) {
@@ -113,6 +129,50 @@ export function useUserExercises({
       }
     },
     [updateExerciseMutation, user]
+  )
+
+  const updateExerciseVideoUrl = useCallback(
+    async (exerciseId: string, videoUrl: string): HookActionResult => {
+      if (!user) {
+        return { error: "You must be signed in." }
+      }
+
+      try {
+        await updateExerciseVideoUrlMutation({
+          userId: user.id,
+          exerciseId,
+          payload: {
+            video_url: videoUrl.trim() || null,
+          },
+        }).unwrap()
+        return {}
+      } catch (error) {
+        return { error: getThrownErrorMessage(error) }
+      }
+    },
+    [updateExerciseVideoUrlMutation, user]
+  )
+
+  const updateExerciseImageUrl = useCallback(
+    async (exerciseId: string, imageUrl: string): HookActionResult => {
+      if (!user) {
+        return { error: "You must be signed in." }
+      }
+
+      try {
+        await updateExerciseImageUrlMutation({
+          userId: user.id,
+          exerciseId,
+          payload: {
+            image_url: imageUrl.trim() || null,
+          },
+        }).unwrap()
+        return {}
+      } catch (error) {
+        return { error: getThrownErrorMessage(error) }
+      }
+    },
+    [updateExerciseImageUrlMutation, user]
   )
 
   const deleteExercise = useCallback(
@@ -183,6 +243,10 @@ export function useUserExercises({
       totalPages,
       isLoading:
         isAuthLoading ||
+        exercisesQuery.isLoading ||
+        exerciseTypesQuery.isLoading ||
+        bodyRegionsQuery.isLoading,
+      isRefreshing:
         exercisesQuery.isFetching ||
         exerciseTypesQuery.isFetching ||
         bodyRegionsQuery.isFetching,
@@ -196,6 +260,8 @@ export function useUserExercises({
       refresh,
       createExercise,
       updateExercise,
+      updateExerciseImageUrl,
+      updateExerciseVideoUrl,
       updateExerciseTaxonomyItem,
       deleteExercise,
     }),
@@ -206,11 +272,14 @@ export function useUserExercises({
       bodyRegionsQuery.data,
       bodyRegionsQuery.error,
       bodyRegionsQuery.isFetching,
+      bodyRegionsQuery.isLoading,
       exerciseTypesQuery.data,
       exerciseTypesQuery.error,
       exerciseTypesQuery.isFetching,
+      exerciseTypesQuery.isLoading,
       exercisesQuery.error,
       exercisesQuery.isFetching,
+      exercisesQuery.isLoading,
       isAuthLoading,
       isMutating,
       mutationError,
@@ -220,6 +289,8 @@ export function useUserExercises({
       totalCount,
       totalPages,
       updateExercise,
+      updateExerciseImageUrl,
+      updateExerciseVideoUrl,
       updateExerciseTaxonomyItem,
     ]
   )

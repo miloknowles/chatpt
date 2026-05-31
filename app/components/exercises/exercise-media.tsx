@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils"
+
 import { getVideoThumbnailUrl } from "./utils"
 
 /* eslint-disable @next/next/no-img-element -- Exercise media uses user-provided external URLs that are not known at build time. */
@@ -7,6 +9,7 @@ type ExerciseMediaProps = {
   imageUrl: string | null
   videoUrl: string | null
   emptyLabel?: string
+  className?: string
 }
 
 export function ExerciseMedia({
@@ -14,6 +17,7 @@ export function ExerciseMedia({
   imageUrl,
   videoUrl,
   emptyLabel,
+  className,
 }: ExerciseMediaProps) {
   const hasImage = Boolean(imageUrl)
   const hasVideo = Boolean(videoUrl)
@@ -24,7 +28,7 @@ export function ExerciseMedia({
   }
 
   return (
-    <div className="space-y-2 text-xs">
+    <div className={cn("space-y-2 text-xs", className)}>
       {hasImage ? (
         <div className="space-y-1">
           <a

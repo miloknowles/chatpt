@@ -1,6 +1,7 @@
 "use client"
 
 import type { FormEvent } from "react"
+import { XIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,6 +18,9 @@ import { Textarea } from "@/components/ui/textarea"
 
 import { TaxonomyMultiSelect } from "./tag-multi-select"
 import type { ExerciseFormValues, ExerciseTaxonomyItem } from "./types"
+import { getVideoThumbnailUrl } from "./utils"
+
+/* eslint-disable @next/next/no-img-element -- Exercise media uses user-provided external URLs that are not known at build time. */
 
 type ExerciseFormSheetProps = {
   open: boolean
@@ -54,6 +58,10 @@ export function ExerciseFormSheet({
   onUpdateTaxonomyItem,
   onSubmit,
 }: ExerciseFormSheetProps) {
+  const videoThumbnailUrl = formValues.videoUrl
+    ? getVideoThumbnailUrl(formValues.videoUrl)
+    : null
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -93,30 +101,79 @@ export function ExerciseFormSheet({
 
             <div className="space-y-2">
               <Label htmlFor="exercise-image-url">Image URL</Label>
-              <Input
-                id="exercise-image-url"
-                type="url"
-                value={formValues.imageUrl}
-                onChange={(event) => onFieldChange("imageUrl", event.target.value)}
-                placeholder="https://..."
-              />
+              <div className="relative">
+                <Input
+                  id="exercise-image-url"
+                  type="url"
+                  value={formValues.imageUrl}
+                  onChange={(event) =>
+                    onFieldChange("imageUrl", event.target.value)
+                  }
+                  placeholder="https://..."
+                  className="pr-10"
+                />
+                {formValues.imageUrl ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="absolute top-0.5 right-0.5"
+                    onClick={() => onFieldChange("imageUrl", "")}
+                    aria-label="Clear image URL"
+                  >
+                    <XIcon />
+                  </Button>
+                ) : null}
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="exercise-video-url">Video URL</Label>
-              <Input
-                id="exercise-video-url"
-                type="url"
-                value={formValues.videoUrl}
-                onChange={(event) => onFieldChange("videoUrl", event.target.value)}
-                placeholder="https://..."
-              />
+              <div className="relative">
+                <Input
+                  id="exercise-video-url"
+                  type="url"
+                  value={formValues.videoUrl}
+                  onChange={(event) =>
+                    onFieldChange("videoUrl", event.target.value)
+                  }
+                  placeholder="https://..."
+                  className="pr-10"
+                />
+                {formValues.videoUrl ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="absolute top-0.5 right-0.5"
+                    onClick={() => onFieldChange("videoUrl", "")}
+                    aria-label="Clear video URL"
+                  >
+                    <XIcon />
+                  </Button>
+                ) : null}
+              </div>
+              {videoThumbnailUrl ? (
+                <a
+                  href={formValues.videoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block w-fit overflow-hidden rounded-md border border-border/60"
+                >
+                  <img
+                    src={videoThumbnailUrl}
+                    alt="Exercise video preview"
+                    className="h-32 w-56 object-cover"
+                    loading="lazy"
+                  />
+                </a>
+              ) : null}
             </div>
 
             <div className="space-y-2">
               <Label>Types</Label>
               <TaxonomyMultiSelect
-                label="Exercise types"
+                label="Exercise Types"
                 createLabel="Create type"
                 emptyLabel="Select exercise types"
                 options={exerciseTypes}

@@ -1,6 +1,12 @@
 "use client"
 
-import { useMemo, useState, type FormEvent } from "react"
+import {
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactElement,
+  type ReactNode,
+} from "react"
 import { MoreHorizontalIcon } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -31,28 +37,32 @@ import {
 } from "./taxonomy-colors"
 import type { ExerciseTaxonomyItem, ExerciseTaxonomySelection } from "./types"
 
-type TaxonomyMultiSelectProps = {
+type TaxonomyDropdownProps = {
   label: string
   createLabel: string
-  emptyLabel: string
   options: ExerciseTaxonomyItem[]
   values: ExerciseTaxonomySelection[]
-  onChange: (nextValues: ExerciseTaxonomySelection[]) => void
+  trigger: ReactElement
+  triggerChildren: ReactNode
+  contentClassName?: string
+  onChange: (nextValues: ExerciseTaxonomySelection[]) => void | Promise<void>
   onUpdateItem: (
     item: ExerciseTaxonomyItem,
     values: { name: string; display_color: string | null }
   ) => Promise<{ error?: string }>
 }
 
-export function TaxonomyMultiSelect({
+export function TaxonomyDropdown({
   label,
   createLabel,
-  emptyLabel,
   options,
   values,
+  trigger,
+  triggerChildren,
+  contentClassName = "w-(--anchor-width) min-w-64",
   onChange,
   onUpdateItem,
-}: TaxonomyMultiSelectProps) {
+}: TaxonomyDropdownProps) {
   const [query, setQuery] = useState("")
   const [editingItem, setEditingItem] = useState<ExerciseTaxonomyItem | null>(
     null
@@ -179,14 +189,12 @@ export function TaxonomyMultiSelect({
   }
 
   return (
-    <div className="space-y-2">
+    <>
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="outline" className="w-full justify-between" />}>
-          {values.length > 0
-            ? `${values.length} selected`
-            : emptyLabel}
+        <DropdownMenuTrigger render={trigger}>
+          {triggerChildren}
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-(--anchor-width)">
+        <DropdownMenuContent className={contentClassName}>
           <DropdownMenuGroup>
             <DropdownMenuLabel>{label}</DropdownMenuLabel>
           </DropdownMenuGroup>
@@ -276,20 +284,6 @@ export function TaxonomyMultiSelect({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {values.length > 0 ? (
-        <div className="flex flex-wrap gap-1">
-          {values.map((value) => (
-            <Badge key={value.id ?? value.name} variant="secondary">
-              <span
-                className={`size-2 rounded-full border border-border ${getTaxonomyColorDotClass(getDisplayColor(value))}`}
-                aria-hidden="true"
-              />
-              {value.name}
-            </Badge>
-          ))}
-        </div>
-      ) : null}
-
       <Dialog
         open={Boolean(editingItem)}
         onOpenChange={(open) => {
@@ -351,6 +345,51 @@ export function TaxonomyMultiSelect({
           </form>
         </DialogContent>
       </Dialog>
+    </>
+  )
+}
+
+type TaxonomyMultiSelectProps = Omit<
+  TaxonomyDropdownProps,
+  "trigger" | "triggerChildren" | "contentClassName"
+> & {
+  emptyLabel: string
+}
+
+export function TaxonomyMultiSelect({
+  emptyLabel,
+  ...props
+}: TaxonomyMultiSelectProps) {
+  function getDisplayColor(item: ExerciseTaxonomySelection) {
+    return item.display_color ?? null
+  }
+
+  return (
+    <div className="space-y-2">
+      <TaxonomyDropdown
+        {...props}
+        trigger={
+          <Button variant="outline" className="w-full justify-between" />
+        }
+        triggerChildren={
+          props.values.length > 0 ? `${props.values.length} selected` : emptyLabel
+        }
+        contentClassName="w-(--anchor-width) min-w-64"
+      />
+
+      {props.values.length > 0 ? (
+        <div className="flex flex-wrap gap-1">
+          {props.values.map((value) => (
+            <Badge key={value.id ?? value.name} variant="secondary">
+              <span
+                className={`size-2 rounded-full border border-border ${getTaxonomyColorDotClass(getDisplayColor(value))}`}
+                aria-hidden="true"
+              />
+              {value.name}
+            </Badge>
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }
