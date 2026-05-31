@@ -3,7 +3,6 @@
 import type { DragEvent } from "react"
 import { GripVerticalIcon } from "lucide-react"
 
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
@@ -15,6 +14,7 @@ import type {
 
 type SupersetCardProps = {
   superset: UserSuperset
+  label: string
   loggedExercises: UserLoggedExercise[]
   draftName: string
   isDragging: boolean
@@ -30,6 +30,7 @@ type SupersetCardProps = {
 
 export function SupersetCard({
   superset,
+  label,
   loggedExercises,
   draftName,
   isDragging,
@@ -54,46 +55,63 @@ export function SupersetCard({
         onDrop(event, superset.id)
       }}
       className={cn(
-        "cursor-grab rounded-md border border-border/70 bg-background p-4 shadow-xs transition active:cursor-grabbing",
+        "cursor-grab overflow-hidden rounded-md border border-border/70 bg-background shadow-xs transition active:cursor-grabbing",
         isDragging && "opacity-50",
         isDragTarget && "border-primary bg-muted/30"
       )}
     >
-      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <div className="flex items-center gap-2">
+      <header className="flex items-center gap-3 border-b border-border/60 bg-muted/30 px-4 py-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <GripVerticalIcon className="size-4 text-muted-foreground" />
-          <Badge variant="secondary" className="uppercase text-xs tracking-wider">
-            Superset
-          </Badge>
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/40 text-sm font-semibold">
+            {label}
+          </div>
+          <Input
+            value={draftName}
+            onChange={(event) =>
+              onDraftNameChange(superset.id, event.target.value)
+            }
+            onBlur={() => onSaveName(superset.id, superset.name)}
+            className="h-8 max-w-xs min-w-0 border-border text-left text-sm font-medium"
+            aria-label="Superset name"
+          />
         </div>
-        <Input
-          value={draftName}
-          onChange={(event) => onDraftNameChange(superset.id, event.target.value)}
-          onBlur={() => onSaveName(superset.id, superset.name)}
-          className="h-8 min-w-0 border-border text-center text-sm font-medium uppercase tracker-wider"
-          aria-label="Superset name"
-        />
-        <div className="text-right text-xs font-medium text-muted-foreground">
+        <div className="shrink-0 text-right text-xs font-medium text-muted-foreground">
           {loggedExercises.length}{" "}
           {loggedExercises.length === 1 ? "exercise" : "exercises"}
         </div>
       </header>
-      {loggedExercises.length > 0 ? (
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {loggedExercises.map((loggedExercise) => (
-            <div
-              key={loggedExercise.id}
-              className="rounded-md border border-border/50 bg-muted/20 px-3 py-2 text-sm"
-            >
-              {loggedExercise.exercise_name}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="mt-3 rounded-md border border-dashed border-border/70 px-3 py-4 text-center text-sm text-muted-foreground">
-          Drop exercises here
-        </div>
-      )}
+      <div className="p-4">
+        {loggedExercises.length > 0 ? (
+          <div className="grid gap-2">
+            {loggedExercises.map((loggedExercise, index) => (
+              <div
+                key={loggedExercise.id}
+                className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/20 px-3 py-2 text-sm"
+              >
+                <span className="shrink-0 font-medium text-muted-foreground">
+                  {label}
+                  {index + 1}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate">
+                    {loggedExercise.exercise_name}
+                  </span>
+                  {loggedExercise.exercise_notes ? (
+                    <span className="mt-0.5 block line-clamp-2 text-xs text-muted-foreground">
+                      {loggedExercise.exercise_notes}
+                    </span>
+                  ) : null}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-md border border-dashed border-border/70 px-3 py-4 text-center text-sm text-muted-foreground">
+            Drop exercises here
+          </div>
+        )}
+      </div>
     </article>
   )
 }

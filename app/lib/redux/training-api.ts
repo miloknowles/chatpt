@@ -42,6 +42,7 @@ export type IssuePayload = {
   name: string
   notes: string | null
   status: UserIssue["status"]
+  sort_key?: string | null
 }
 
 export type QualityPayload = {
@@ -49,8 +50,13 @@ export type QualityPayload = {
   notes: string | null
   body_region: string | null
   status: UserQuality["status"]
+  sort_key?: string | null
   training_frequency_target: string | null
   training_goal: string | null
+}
+
+export type ProfileSortKeyPayload = {
+  sort_key: string
 }
 
 export type SessionCreatePayload = {
@@ -76,6 +82,7 @@ export type SupersetUpdatePayload = {
 
 export type UserLoggedExerciseWithExercise = UserLoggedExercise & {
   exercise_name: string
+  exercise_notes: string | null
 }
 
 export type LoggedExerciseCreatePayload = {
@@ -93,6 +100,11 @@ export type TouchConversationPayload = {
   conversationId: string
   title?: string
   lastMessageAt: string
+}
+
+export type ConversationUpdatePayload = {
+  title?: string
+  status?: UserConversation["status"]
 }
 
 function getErrorMessage(error: { message: string } | null) {
@@ -273,8 +285,8 @@ export const trainingApi = createApi({
           .from("user_issues")
           .select("*")
           .eq("user_id", userId)
-          .order("status", { ascending: true })
-          .order("updated_at", { ascending: false })
+          .order("sort_key", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: true })
 
         if (error) {
           return { error: getErrorMessage(error) }
@@ -336,6 +348,29 @@ export const trainingApi = createApi({
         { type: "Issues", id: issueId },
       ],
     }),
+    updateIssueSortKey: builder.mutation<
+      null,
+      { userId: string; issueId: string; payload: ProfileSortKeyPayload }
+    >({
+      async queryFn({ userId, issueId, payload }) {
+        const supabase = createClient()
+        const { error } = await supabase
+          .from("user_issues")
+          .update(payload)
+          .eq("id", issueId)
+          .eq("user_id", userId)
+
+        if (error) {
+          return { error: getErrorMessage(error) }
+        }
+
+        return { data: null }
+      },
+      invalidatesTags: (_result, _error, { issueId }) => [
+        listTag("Issues"),
+        { type: "Issues", id: issueId },
+      ],
+    }),
     getQualities: builder.query<UserQuality[], { userId: string }>({
       async queryFn({ userId }) {
         const supabase = createClient()
@@ -343,8 +378,8 @@ export const trainingApi = createApi({
           .from("user_qualities")
           .select("*")
           .eq("user_id", userId)
-          .order("status", { ascending: true })
-          .order("updated_at", { ascending: false })
+          .order("sort_key", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: true })
 
         if (error) {
           return { error: getErrorMessage(error) }
@@ -383,6 +418,29 @@ export const trainingApi = createApi({
     updateQuality: builder.mutation<
       null,
       { userId: string; qualityId: string; payload: QualityPayload }
+    >({
+      async queryFn({ userId, qualityId, payload }) {
+        const supabase = createClient()
+        const { error } = await supabase
+          .from("user_qualities")
+          .update(payload)
+          .eq("id", qualityId)
+          .eq("user_id", userId)
+
+        if (error) {
+          return { error: getErrorMessage(error) }
+        }
+
+        return { data: null }
+      },
+      invalidatesTags: (_result, _error, { qualityId }) => [
+        listTag("Qualities"),
+        { type: "Qualities", id: qualityId },
+      ],
+    }),
+    updateQualitySortKey: builder.mutation<
+      null,
+      { userId: string; qualityId: string; payload: ProfileSortKeyPayload }
     >({
       async queryFn({ userId, qualityId, payload }) {
         const supabase = createClient()
@@ -602,11 +660,12 @@ export const trainingApi = createApi({
         const rows = data ?? []
         const exerciseIds = Array.from(new Set(rows.map((row) => row.exercise_id)))
         const exerciseNamesById = new Map<string, string>()
+        const exerciseNotesById = new Map<string, string | null>()
 
         if (exerciseIds.length > 0) {
           const { data: exerciseRows, error: exerciseError } = await supabase
             .from("user_exercises")
-            .select("id,name")
+            .select("id,name,notes")
             .eq("user_id", userId)
             .in("id", exerciseIds)
 
@@ -616,6 +675,7 @@ export const trainingApi = createApi({
 
           for (const exercise of exerciseRows ?? []) {
             exerciseNamesById.set(exercise.id, exercise.name)
+            exerciseNotesById.set(exercise.id, exercise.notes)
           }
         }
 
@@ -624,6 +684,7 @@ export const trainingApi = createApi({
             ...row,
             exercise_name:
               exerciseNamesById.get(row.exercise_id) ?? "Unknown exercise",
+            exercise_notes: exerciseNotesById.get(row.exercise_id) ?? null,
           })),
         }
       },
@@ -798,6 +859,57 @@ export const trainingApi = createApi({
         { type: "Conversations", id: payload.conversationId },
       ],
     }),
+    updateConversation: builder.mutation<
+      null,
+      {
+        userId: string
+        conversationId: string
+        payload: ConversationUpdatePayload
+      }
+    >({
+      async queryFn({ userId, conversationId, payload }) {
+        const supabase = createClient()
+        const { error } = await supabase
+          .from("user_conversations")
+          .update(payload)
+          .eq("id", conversationId)
+          .eq("user_id", userId)
+
+        if (error) {
+          return { error: getErrorMessage(error) }
+        }
+
+        return { data: null }
+      },
+      invalidatesTags: (_result, _error, { conversationId }) => [
+        listTag("Conversations"),
+        { type: "Conversations", id: conversationId },
+      ],
+    }),
+    deleteConversation: builder.mutation<
+      null,
+      { userId: string; conversationId: string }
+    >({
+      async queryFn({ userId, conversationId }) {
+        const supabase = createClient()
+        const { error } = await supabase
+          .from("user_conversations")
+          .update({ status: "deleted" })
+          .eq("id", conversationId)
+          .eq("user_id", userId)
+
+        if (error) {
+          return { error: getErrorMessage(error) }
+        }
+
+        return { data: null }
+      },
+      invalidatesTags: (_result, _error, { conversationId }) => [
+        listTag("Conversations"),
+        { type: "Conversations", id: conversationId },
+        { type: "Messages", id: conversationId },
+      ],
+    }),
     getMessages: builder.query<
       UserMessage[],
       { userId: string; conversationId: string }
@@ -868,9 +980,11 @@ export const {
   useGetIssuesQuery,
   useCreateIssueMutation,
   useUpdateIssueMutation,
+  useUpdateIssueSortKeyMutation,
   useGetQualitiesQuery,
   useCreateQualityMutation,
   useUpdateQualityMutation,
+  useUpdateQualitySortKeyMutation,
   useGetSessionsQuery,
   useCreateSessionMutation,
   useUpdateSessionMutation,
@@ -883,6 +997,8 @@ export const {
   useGetConversationsQuery,
   useCreateConversationMutation,
   useTouchConversationMutation,
+  useUpdateConversationMutation,
+  useDeleteConversationMutation,
   useGetMessagesQuery,
   useCreateMessageMutation,
 } = trainingApi

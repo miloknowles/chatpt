@@ -6,6 +6,7 @@ export type UserExercise = Database["public"]["Tables"]["user_exercises"]["Row"]
 export type UserLoggedExercise =
   Database["public"]["Tables"]["user_logged_exercises"]["Row"] & {
     exercise_name: string
+    exercise_notes: string | null
   }
 export type UserSession = Database["public"]["Tables"]["user_sessions"]["Row"]
 export type UserSuperset = Database["public"]["Tables"]["user_supersets"]["Row"]

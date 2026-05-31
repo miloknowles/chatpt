@@ -10,7 +10,9 @@ import {
   useGetIssuesQuery,
   useGetQualitiesQuery,
   useUpdateIssueMutation,
+  useUpdateIssueSortKeyMutation,
   useUpdateQualityMutation,
+  useUpdateQualitySortKeyMutation,
   type IssuePayload,
   type QualityPayload,
 } from "@/lib/redux/training-api"
@@ -34,19 +36,27 @@ export function useUserProfile() {
   const qualitiesQuery = useGetQualitiesQuery(queryArgs)
   const [createIssueMutation, createIssueState] = useCreateIssueMutation()
   const [updateIssueMutation, updateIssueState] = useUpdateIssueMutation()
+  const [updateIssueSortKeyMutation, updateIssueSortKeyState] =
+    useUpdateIssueSortKeyMutation()
   const [createQualityMutation, createQualityState] = useCreateQualityMutation()
   const [updateQualityMutation, updateQualityState] = useUpdateQualityMutation()
+  const [updateQualitySortKeyMutation, updateQualitySortKeyState] =
+    useUpdateQualitySortKeyMutation()
 
   const isMutating =
     createIssueState.isLoading ||
     updateIssueState.isLoading ||
+    updateIssueSortKeyState.isLoading ||
     createQualityState.isLoading ||
-    updateQualityState.isLoading
+    updateQualityState.isLoading ||
+    updateQualitySortKeyState.isLoading
   const mutationError =
     getRtkErrorMessage(createIssueState.error) ??
     getRtkErrorMessage(updateIssueState.error) ??
+    getRtkErrorMessage(updateIssueSortKeyState.error) ??
     getRtkErrorMessage(createQualityState.error) ??
-    getRtkErrorMessage(updateQualityState.error)
+    getRtkErrorMessage(updateQualityState.error) ??
+    getRtkErrorMessage(updateQualitySortKeyState.error)
 
   const createIssue = useCallback(
     async (payload: IssuePayload): HookActionResult => {
@@ -78,6 +88,26 @@ export function useUserProfile() {
       }
     },
     [updateIssueMutation, user]
+  )
+
+  const reorderIssue = useCallback(
+    async (issueId: string, sortKey: string): HookActionResult => {
+      if (!user) {
+        return { error: "You must be signed in." }
+      }
+
+      try {
+        await updateIssueSortKeyMutation({
+          userId: user.id,
+          issueId,
+          payload: { sort_key: sortKey },
+        }).unwrap()
+        return {}
+      } catch (error) {
+        return { error: getThrownErrorMessage(error) }
+      }
+    },
+    [updateIssueSortKeyMutation, user]
   )
 
   const createQuality = useCallback(
@@ -116,6 +146,26 @@ export function useUserProfile() {
     [updateQualityMutation, user]
   )
 
+  const reorderQuality = useCallback(
+    async (qualityId: string, sortKey: string): HookActionResult => {
+      if (!user) {
+        return { error: "You must be signed in." }
+      }
+
+      try {
+        await updateQualitySortKeyMutation({
+          userId: user.id,
+          qualityId,
+          payload: { sort_key: sortKey },
+        }).unwrap()
+        return {}
+      } catch (error) {
+        return { error: getThrownErrorMessage(error) }
+      }
+    },
+    [updateQualitySortKeyMutation, user]
+  )
+
   return useMemo(
     () => ({
       issues: issuesQuery.data ?? [],
@@ -129,8 +179,10 @@ export function useUserProfile() {
       mutationError,
       createIssue,
       updateIssue,
+      reorderIssue,
       createQuality,
       updateQuality,
+      reorderQuality,
     }),
     [
       createIssue,
@@ -141,6 +193,8 @@ export function useUserProfile() {
       issuesQuery.error,
       issuesQuery.isFetching,
       mutationError,
+      reorderIssue,
+      reorderQuality,
       qualitiesQuery.data,
       qualitiesQuery.error,
       qualitiesQuery.isFetching,

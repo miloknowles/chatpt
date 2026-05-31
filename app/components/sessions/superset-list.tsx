@@ -31,6 +31,19 @@ type SupersetListProps = {
   onSaveSupersetName: (supersetId: string, previousName: string | null) => void
 }
 
+function getSupersetLabel(index: number) {
+  let value = index + 1
+  let label = ""
+
+  while (value > 0) {
+    value -= 1
+    label = String.fromCharCode(65 + (value % 26)) + label
+    value = Math.floor(value / 26)
+  }
+
+  return label
+}
+
 export function SupersetList({
   supersets,
   isLoading,
@@ -57,10 +70,11 @@ export function SupersetList({
           Add a superset to start building this session.
         </div>
       ) : (
-        supersets.map((superset) => (
+        supersets.map((superset, index) => (
           <SupersetCard
             key={superset.id}
             superset={superset}
+            label={getSupersetLabel(index)}
             loggedExercises={loggedExercisesBySupersetId[superset.id] ?? []}
             draftName={
               draftSupersetNames[superset.id] ??

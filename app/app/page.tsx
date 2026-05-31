@@ -3,9 +3,13 @@ import Link from "next/link"
 import { MarketingLayout } from "@/components/marketing-layout"
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { createClient } from "@/lib/supabase/server"
 import { cn } from "@/lib/utils"
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
   return (
     <MarketingLayout>
       <Card className="border border-border/70 bg-card/90 shadow-2xl shadow-foreground/10 backdrop-blur">
@@ -19,13 +23,13 @@ export default function HomePage() {
             Get onboarded in less than 5 minutes
           </p>
           <Link
-            href="/auth"
+            href={user ? "/training" : "/auth"}
             className={cn(
               buttonVariants({ size: "lg" }),
               "flex w-full",
             )}
           >
-            Login or sign up
+            {user ? "Open your training dashboard" : "Login or sign up"}
           </Link>
         </CardContent>
       </Card>

@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import { CheckIcon, ChevronDownIcon, PlusIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -11,6 +12,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import type { UserConversation } from "@/types/database"
+
+import { formatMessageTime } from "./utils"
 
 type ChatHeaderProps = {
   isAside: boolean
@@ -38,6 +41,14 @@ export function ChatHeader({
   const currentTitle =
     selectedConversation?.title ?? (isLoading ? "Loading conversations" : "New conversation")
   const latestError = mutationError ?? error
+  const sortedConversations = useMemo(
+    () =>
+      [...conversations].sort(
+        (first, second) =>
+          getConversationTimestamp(second) - getConversationTimestamp(first)
+      ),
+    [conversations]
+  )
 
   return (
     <div
@@ -63,18 +74,26 @@ export function ChatHeader({
           <ChevronDownIcon className="ml-1 size-4 text-muted-foreground" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-72">
-          {conversations.length > 0 ? (
-            conversations.map((conversation) => {
+          {sortedConversations.length > 0 ? (
+            sortedConversations.map((conversation) => {
               const isSelected = conversation.id === selectedConversation?.id
+              const timestamp = getConversationTimestampLabel(conversation)
 
               return (
                 <DropdownMenuItem
                   key={conversation.id}
                   onClick={() => onSelectConversation(conversation.id)}
-                  className="min-w-0"
+                  className="min-w-0 items-start py-2"
                 >
-                  <span className="truncate">{conversation.title}</span>
-                  {isSelected ? <CheckIcon className="ml-auto" /> : null}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">{conversation.title}</span>
+                    {timestamp ? (
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {timestamp}
+                      </span>
+                    ) : null}
+                  </span>
+                  {isSelected ? <CheckIcon className="mt-0.5 ml-auto" /> : null}
                 </DropdownMenuItem>
               )
             })
@@ -104,4 +123,22 @@ export function ChatHeader({
       </Button>
     </div>
   )
+}
+
+function getConversationTimestamp(conversation: UserConversation) {
+  const timestamp =
+    conversation.last_message_at ?? conversation.updated_at ?? conversation.created_at
+
+  return new Date(timestamp).getTime()
+}
+
+function getConversationTimestampLabel(conversation: UserConversation) {
+  const timestamp =
+    conversation.last_message_at ?? conversation.updated_at ?? conversation.created_at
+
+  if (!timestamp) {
+    return null
+  }
+
+  return formatMessageTime(new Date(timestamp))
 }

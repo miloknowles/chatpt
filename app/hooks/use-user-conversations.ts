@@ -6,8 +6,11 @@ import { skipToken } from "@reduxjs/toolkit/query"
 import { useAuth } from "@/components/auth-provider"
 import {
   useCreateConversationMutation,
+  useDeleteConversationMutation,
   useGetConversationsQuery,
   useTouchConversationMutation,
+  useUpdateConversationMutation,
+  type ConversationUpdatePayload,
   type ConversationCreatePayload,
 } from "@/lib/redux/training-api"
 import type { UserConversation } from "@/types/database"
@@ -53,16 +56,25 @@ export function useUserConversations({
     useCreateConversationMutation()
   const [touchConversationMutation, touchConversationState] =
     useTouchConversationMutation()
+  const [updateConversationMutation, updateConversationState] =
+    useUpdateConversationMutation()
+  const [deleteConversationMutation, deleteConversationState] =
+    useDeleteConversationMutation()
 
   const conversations = useMemo(
     () => conversationsQuery.data ?? [],
     [conversationsQuery.data]
   )
   const isMutating =
-    createConversationState.isLoading || touchConversationState.isLoading
+    createConversationState.isLoading ||
+    touchConversationState.isLoading ||
+    updateConversationState.isLoading ||
+    deleteConversationState.isLoading
   const mutationError =
     getRtkErrorMessage(createConversationState.error) ??
-    getRtkErrorMessage(touchConversationState.error)
+    getRtkErrorMessage(touchConversationState.error) ??
+    getRtkErrorMessage(updateConversationState.error) ??
+    getRtkErrorMessage(deleteConversationState.error)
 
   const createConversation = useCallback(
     async (
@@ -153,6 +165,48 @@ export function useUserConversations({
     [conversations, touchConversationMutation, user]
   )
 
+  const updateConversation = useCallback(
+    async (
+      conversationId: string,
+      payload: ConversationUpdatePayload
+    ): HookActionResult => {
+      if (!user) {
+        return { error: "You must be signed in." }
+      }
+
+      try {
+        await updateConversationMutation({
+          userId: user.id,
+          conversationId,
+          payload,
+        }).unwrap()
+        return {}
+      } catch (error) {
+        return { error: getThrownErrorMessage(error) }
+      }
+    },
+    [updateConversationMutation, user]
+  )
+
+  const deleteConversation = useCallback(
+    async (conversationId: string): HookActionResult => {
+      if (!user) {
+        return { error: "You must be signed in." }
+      }
+
+      try {
+        await deleteConversationMutation({
+          userId: user.id,
+          conversationId,
+        }).unwrap()
+        return {}
+      } catch (error) {
+        return { error: getThrownErrorMessage(error) }
+      }
+    },
+    [deleteConversationMutation, user]
+  )
+
   return useMemo(
     () => ({
       conversations,
@@ -162,6 +216,8 @@ export function useUserConversations({
       mutationError,
       createConversation,
       touchConversation,
+      updateConversation,
+      deleteConversation,
     }),
     [
       conversations,
@@ -171,7 +227,9 @@ export function useUserConversations({
       isAuthLoading,
       isMutating,
       mutationError,
+      deleteConversation,
       touchConversation,
+      updateConversation,
     ]
   )
 }

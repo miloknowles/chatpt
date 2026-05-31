@@ -4,13 +4,13 @@ import { useEffect, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   ChevronRightIcon,
+  ClipboardCheckIcon,
   LibraryBigIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
   RouteIcon,
   Trash2Icon,
-  UserRoundIcon,
 } from "lucide-react"
 
 import { useUserSessions } from "@/hooks/use-user-sessions"
@@ -130,7 +130,7 @@ export function NavProgram() {
               isActive={isProfileRoute}
               render={<a href="/training/profile" />}
             >
-              <UserRoundIcon />
+              <ClipboardCheckIcon />
               <span>Profile</span>
             </SidebarMenuButton>
           </SidebarMenuItem>

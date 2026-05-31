@@ -92,9 +92,9 @@ export function NavUser({
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <div className="flex items-center justify-between px-2 py-1.5 text-sm">
+            <div className="flex items-center justify-between px-2 py-1 text-sm">
               <span>Theme</span>
-              <ThemeToggle />
+              <ThemeToggle variant="secondary" size="icon-sm" />
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => router.push("/training/settings")}>

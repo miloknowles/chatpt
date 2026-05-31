@@ -8,6 +8,8 @@ import { trainingApi } from "@/lib/redux/training-api"
 import { createClient } from "@/lib/supabase/client"
 
 const realtimeTables = [
+  "user_issues",
+  "user_qualities",
   "user_exercises",
   "user_sessions",
   "user_supersets",
@@ -38,6 +40,24 @@ export function DataRealtimeBridge() {
           filter: `user_id=eq.${user.id}`,
         },
         () => {
+          if (table === "user_issues") {
+            dispatch(
+              trainingApi.util.invalidateTags([
+                { type: "Issues", id: "LIST" },
+              ])
+            )
+            return
+          }
+
+          if (table === "user_qualities") {
+            dispatch(
+              trainingApi.util.invalidateTags([
+                { type: "Qualities", id: "LIST" },
+              ])
+            )
+            return
+          }
+
           if (table === "user_exercises") {
             dispatch(
               trainingApi.util.invalidateTags([

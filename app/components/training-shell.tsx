@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
+  ClipboardCheckIcon,
   DumbbellIcon,
   LibraryBigIcon,
   MessageSquareIcon,
@@ -11,7 +12,6 @@ import {
   RouteIcon,
   SettingsIcon,
   UserIcon,
-  UserRoundIcon,
 } from "lucide-react"
 
 import { AppSidebar } from "@/components/app-sidebar"
@@ -60,7 +60,7 @@ export function TrainingShell({
     pathname === "/training/exercises"
       ? LibraryBigIcon
       : pathname === "/training/profile"
-        ? UserRoundIcon
+        ? ClipboardCheckIcon
       : pathname === "/training/program"
         ? LibraryBigIcon
         : pathname === "/training/sessions"

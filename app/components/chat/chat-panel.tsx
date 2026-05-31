@@ -4,11 +4,16 @@ import { useEffect, useMemo, useRef, useState } from "react"
 
 import { useUserConversations } from "@/hooks/use-user-conversations"
 import { useUserMessages } from "@/hooks/use-user-messages"
+import { useAppDispatch } from "@/lib/redux/store"
+import { trainingApi } from "@/lib/redux/training-api"
 import { cn } from "@/lib/utils"
+import type { UserMessage } from "@/types/database"
 
 import { ChatComposer } from "./chat-composer"
 import { ChatHeader } from "./chat-header"
 import { ChatMessageBubble } from "./chat-message-bubble"
+
+const FAILED_ASSISTANT_MESSAGE = "The request failed, try again later."
 
 type ChatPanelProps = {
   variant?: "page" | "aside"
@@ -24,8 +29,15 @@ export function ChatPanel({
   onSelectedConversationIdChange,
 }: ChatPanelProps) {
   const isAside = variant === "aside"
+  const dispatch = useAppDispatch()
   const [localConversationId, setLocalConversationId] = useState<string | null>(null)
   const [draftMessage, setDraftMessage] = useState("")
+  const [turnError, setTurnError] = useState<string | null>(null)
+  const [optimisticUserMessage, setOptimisticUserMessage] =
+    useState<UserMessage | null>(null)
+  const [streamingAssistantMessage, setStreamingAssistantMessage] =
+    useState<UserMessage | null>(null)
+  const [isSendingTurn, setIsSendingTurn] = useState(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const {
     conversations,
@@ -34,7 +46,6 @@ export function ChatPanel({
     error: conversationError,
     mutationError: conversationMutationError,
     createConversation,
-    touchConversation,
   } = useUserConversations({ limit: recentConversationLimit })
   const activeConversationId = selectedConversationId ?? localConversationId
   const localConversation = useMemo(
@@ -49,16 +60,37 @@ export function ChatPanel({
   const {
     messages,
     isLoading: isLoadingMessages,
-    isMutating: isSavingMessage,
     error: messageError,
     mutationError: messageMutationError,
-    createMessage,
   } = useUserMessages({ conversationId: selectedConversation?.id ?? null })
   const latestSurfaceError =
+    turnError ??
     messageMutationError ??
     messageError ??
     conversationMutationError ??
     conversationError
+  const visibleMessages = useMemo(() => {
+    const nextMessages = [...messages]
+
+    if (
+      optimisticUserMessage &&
+      !messages.some((message) => message.id === optimisticUserMessage.id) &&
+      !messages.some(
+        (message) =>
+          message.role === "user" &&
+          message.content === optimisticUserMessage.content &&
+          message.created_at >= optimisticUserMessage.created_at
+      )
+    ) {
+      nextMessages.push(optimisticUserMessage)
+    }
+
+    if (streamingAssistantMessage) {
+      nextMessages.push(streamingAssistantMessage)
+    }
+
+    return nextMessages
+  }, [messages, optimisticUserMessage, streamingAssistantMessage])
 
   function selectConversation(conversationId: string) {
     setLocalConversationId(conversationId)
@@ -76,15 +108,118 @@ export function ChatPanel({
   async function sendMessage() {
     const trimmedMessage = draftMessage.trim()
 
-    if (!trimmedMessage || isSavingMessage || !selectedConversation) {
+    if (!trimmedMessage || isSendingTurn || !selectedConversation) {
       return
     }
 
-    const result = await createMessage(trimmedMessage)
+    const submittedAt = new Date().toISOString()
 
-    if (result.message) {
-      setDraftMessage("")
-      await touchConversation(selectedConversation.id, trimmedMessage)
+    setDraftMessage("")
+    setTurnError(null)
+    setIsSendingTurn(true)
+    setOptimisticUserMessage(
+      createLocalMessage({
+        id: `local-user-${crypto.randomUUID()}`,
+        conversationId: selectedConversation.id,
+        content: trimmedMessage,
+        role: "user",
+        createdAt: submittedAt,
+      })
+    )
+    setStreamingAssistantMessage(
+      createLocalMessage({
+        id: `local-assistant-${crypto.randomUUID()}`,
+        conversationId: selectedConversation.id,
+        content: "",
+        role: "assistant",
+        status: "streaming",
+        createdAt: new Date().toISOString(),
+      })
+    )
+
+    try {
+      const response = await fetch("/api/chat/turn", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          conversationId: selectedConversation.id,
+          content: trimmedMessage,
+        }),
+      })
+
+      if (!response.ok || !response.body) {
+        const errorPayload = (await response.json().catch(() => null)) as {
+          error?: string
+        } | null
+        throw new Error(errorPayload?.error ?? "Could not send message.")
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let assistantContent = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+
+        if (done) {
+          break
+        }
+
+        const chunk = decoder.decode(value, { stream: true })
+        assistantContent += chunk
+        setStreamingAssistantMessage((message) =>
+          message ? { ...message, content: assistantContent } : message
+        )
+      }
+
+      const finalChunk = decoder.decode()
+      if (finalChunk) {
+        assistantContent += finalChunk
+        setStreamingAssistantMessage((message) =>
+          message ? { ...message, content: assistantContent } : message
+        )
+      }
+
+      setStreamingAssistantMessage((message) =>
+        message
+          ? {
+              ...message,
+              status:
+                assistantContent.trim() === FAILED_ASSISTANT_MESSAGE
+                  ? "failed"
+                  : "complete",
+            }
+          : message
+      )
+
+      dispatch(
+        trainingApi.util.invalidateTags([
+          { type: "Messages", id: selectedConversation.id },
+          { type: "Messages", id: "LIST" },
+          { type: "Conversations", id: "LIST" },
+          { type: "Conversations", id: selectedConversation.id },
+        ])
+      )
+      setOptimisticUserMessage(null)
+      setStreamingAssistantMessage(null)
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not send message."
+      setTurnError(message)
+      setDraftMessage(trimmedMessage)
+      setStreamingAssistantMessage((assistantMessage) =>
+        assistantMessage
+          ? {
+              ...assistantMessage,
+              content: assistantMessage.content || message,
+              status: "failed",
+            }
+          : assistantMessage
+      )
+    } finally {
+      setIsSendingTurn(false)
     }
   }
 
@@ -96,7 +231,7 @@ export function ChatPanel({
     }
 
     scrollArea.scrollTop = scrollArea.scrollHeight
-  }, [messages])
+  }, [visibleMessages])
 
   return (
     <section
@@ -136,9 +271,9 @@ export function ChatPanel({
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             Loading messages
           </div>
-        ) : messages.length > 0 ? (
+        ) : visibleMessages.length > 0 ? (
           <div className="space-y-4">
-            {messages.map((message) => (
+            {visibleMessages.map((message) => (
               <ChatMessageBubble key={message.id} message={message} />
             ))}
           </div>
@@ -152,10 +287,38 @@ export function ChatPanel({
       <ChatComposer
         isAside={isAside}
         value={draftMessage}
-        isSaving={isSavingMessage || !selectedConversation}
+        isSaving={isSendingTurn || !selectedConversation}
         onChange={setDraftMessage}
         onSubmit={() => void sendMessage()}
       />
     </section>
   )
+}
+
+function createLocalMessage({
+  id,
+  conversationId,
+  content,
+  role,
+  status = "complete",
+  createdAt,
+}: {
+  id: string
+  conversationId: string
+  content: string
+  role: UserMessage["role"]
+  status?: UserMessage["status"]
+  createdAt: string
+}): UserMessage {
+  return {
+    id,
+    user_id: "local",
+    conversation_id: conversationId,
+    role,
+    content,
+    status,
+    metadata: {},
+    created_at: createdAt,
+    updated_at: createdAt,
+  }
 }

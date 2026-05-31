@@ -121,6 +121,7 @@ export interface Database {
           name: string
           notes: string | null
           status: UserIssueStatus
+          sort_key: string | null
           first_noted_at: string
           last_noted_at: string
           created_at: string
@@ -132,6 +133,7 @@ export interface Database {
           name: string
           notes?: string | null
           status: UserIssueStatus
+          sort_key?: string | null
           first_noted_at?: string
           last_noted_at?: string
           created_at?: string
@@ -143,6 +145,7 @@ export interface Database {
           name?: string
           notes?: string | null
           status?: UserIssueStatus
+          sort_key?: string | null
           first_noted_at?: string
           last_noted_at?: string
           created_at?: string
@@ -216,6 +219,7 @@ export interface Database {
           notes: string | null
           body_region: string | null
           status: UserQualityStatus
+          sort_key: string | null
           training_frequency_target: string | null
           training_goal: string | null
           created_at: string
@@ -228,6 +232,7 @@ export interface Database {
           notes?: string | null
           body_region?: string | null
           status: UserQualityStatus
+          sort_key?: string | null
           training_frequency_target?: string | null
           training_goal?: string | null
           created_at?: string
@@ -240,6 +245,7 @@ export interface Database {
           notes?: string | null
           body_region?: string | null
           status?: UserQualityStatus
+          sort_key?: string | null
           training_frequency_target?: string | null
           training_goal?: string | null
           created_at?: string

@@ -15,6 +15,14 @@ import { SessionDetails } from "./session-details"
 import { SupersetList } from "./superset-list"
 import type { UserExercise } from "./types"
 
+function compareSortKeys(firstKey: string, secondKey: string) {
+  if (firstKey === secondKey) {
+    return 0
+  }
+
+  return firstKey < secondKey ? -1 : 1
+}
+
 export function SessionBuilder() {
   const router = useRouter()
   const pathname = usePathname()
@@ -168,7 +176,10 @@ export function SessionBuilder() {
   }
 
   const orderedSupersets = useMemo(
-    () => [...supersets].sort((first, second) => first.sort_key.localeCompare(second.sort_key)),
+    () =>
+      [...supersets].sort((first, second) =>
+        compareSortKeys(first.sort_key, second.sort_key)
+      ),
     [supersets]
   )
 

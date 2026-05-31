@@ -5,8 +5,18 @@ import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-export function ThemeToggle() {
+type ThemeToggleProps = Pick<
+  React.ComponentProps<typeof Button>,
+  "className" | "size" | "variant"
+>;
+
+export function ThemeToggle({
+  className,
+  size = "icon-sm",
+  variant = "outline",
+}: ThemeToggleProps) {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const mounted = React.useSyncExternalStore(
     () => () => {},
@@ -17,9 +27,12 @@ export function ThemeToggle() {
   if (!mounted) {
     return (
       <Button
-        variant="outline"
-        size="icon-sm"
-        className="border-border bg-background/80"
+        variant={variant}
+        size={size}
+        className={cn(
+          variant === "outline" && "border-border bg-background/80",
+          className,
+        )}
         disabled
         aria-hidden="true"
       >
@@ -32,9 +45,13 @@ export function ThemeToggle() {
 
   return (
     <Button
-      variant="outline"
-      size="icon-sm"
-      className="border-border bg-background/80 backdrop-blur hover:bg-muted"
+      variant={variant}
+      size={size}
+      className={cn(
+        variant === "outline" &&
+          "border-border bg-background/80 backdrop-blur hover:bg-muted",
+        className,
+      )}
       onClick={() => setTheme(isDark ? "light" : "dark")}
       aria-label="Toggle theme"
     >
