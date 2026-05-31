@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { CopyIcon } from "lucide-react"
 
+import { AvatarUpload } from "@/components/avatar-upload"
 import { useAuth } from "@/components/auth-provider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -78,19 +79,22 @@ export function UserSettingsForm({ initialDisplayName }: UserSettingsFormProps) 
   return (
     <div className="space-y-8">
       <form className="space-y-4" onSubmit={handleSubmit}>
-        <div className="space-y-2">
-          <Label htmlFor="display-name">Display Name</Label>
-          <Input
-            id="display-name"
-            name="display-name"
-            type="text"
-            autoComplete="name"
-            maxLength={64}
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-            className="h-10 bg-background"
-            placeholder="Your name"
-          />
+        <div className="flex items-end gap-4">
+          <div className="flex-1 space-y-2">
+            <Label htmlFor="display-name">Display Name</Label>
+            <Input
+              id="display-name"
+              name="display-name"
+              type="text"
+              autoComplete="name"
+              maxLength={64}
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              className="h-10 bg-background"
+              placeholder="Your name"
+            />
+          </div>
+          <AvatarUpload />
         </div>
 
         <Button type="submit" disabled={isDisabled}>

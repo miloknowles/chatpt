@@ -36,6 +36,7 @@ export function NavUser({
   user: {
     name: string
     email: string
+    avatarUrl?: string | null
   }
   onSignOut: () => void
   isSigningOut?: boolean
@@ -54,12 +55,20 @@ export function NavUser({
             }
           >
             <div className="size-8 shrink-0 overflow-hidden rounded-full">
-              <BoringAvatar
-                size={32}
-                name={avatarSeed}
-                variant="beam"
-                colors={BRAND_BEAM_DUOTONE_COLORS}
-              />
+              {user.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={user.name}
+                  className="size-full object-cover"
+                />
+              ) : (
+                <BoringAvatar
+                  size={32}
+                  name={avatarSeed}
+                  variant="beam"
+                  colors={BRAND_BEAM_DUOTONE_COLORS}
+                />
+              )}
             </div>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-medium">{user.name}</span>

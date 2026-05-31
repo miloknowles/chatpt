@@ -25,6 +25,7 @@ export interface AuthContextValue {
   verifyEmailOtp(email: string, token: string): AuthActionResult
   resendOtp(email: string): AuthActionResult
   updateDisplayName(displayName: string): AuthActionResult
+  updateAvatarUrl(avatarUrl: string | null): AuthActionResult
   signOut(): Promise<void>
 }
 
@@ -157,6 +158,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [router, supabase]
   )
 
+  const updateAvatarUrl = useCallback(
+    async (avatarUrl: string | null) => {
+      const { data, error } = await supabase.auth.updateUser({
+        data: { avatar_url: avatarUrl },
+      })
+
+      if (error) {
+        return { error: formatAuthError(error) }
+      }
+
+      setUser(data.user ?? null)
+      router.refresh()
+      return {}
+    },
+    [router, supabase]
+  )
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
     router.push("/")
@@ -173,6 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       verifyEmailOtp,
       resendOtp,
       updateDisplayName,
+      updateAvatarUrl,
       signOut,
     }),
     [
@@ -181,6 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resendOtp,
       session,
       signOut,
+      updateAvatarUrl,
       updateDisplayName,
       user,
       verifyEmailOtp,

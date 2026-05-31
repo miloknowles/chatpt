@@ -56,6 +56,10 @@ export function TrainingShell({
   const metadataDisplayName = user?.user_metadata?.display_name
   const displayName =
     typeof metadataDisplayName === "string" ? metadataDisplayName : undefined
+  const avatarUrl =
+    typeof user?.user_metadata?.avatar_url === "string"
+      ? user.user_metadata.avatar_url
+      : undefined
   const MobileHeaderIcon =
     pathname === "/training/exercises"
       ? LibraryBigIcon
@@ -153,6 +157,7 @@ export function TrainingShell({
       <AppSidebar
         email={effectiveEmail}
         displayName={displayName}
+        avatarUrl={avatarUrl}
         onSignOut={signOut}
         onSelectChatConversation={(conversationId) => {
           setSelectedChatConversationId(conversationId)

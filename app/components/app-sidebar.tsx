@@ -48,6 +48,7 @@ const data = {
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   email: string
   displayName?: string
+  avatarUrl?: string | null
   onSignOut: () => void
   onSelectChatConversation: (conversationId: string) => void
   selectedChatConversationId?: string | null
@@ -58,6 +59,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 export function AppSidebar({
   email,
   displayName,
+  avatarUrl,
   onSignOut,
   onSelectChatConversation,
   selectedChatConversationId = null,
@@ -71,8 +73,9 @@ export function AppSidebar({
     () => ({
       name: normalizedDisplayName || userNameFromEmail(email),
       email,
+      avatarUrl,
     }),
-    [email, normalizedDisplayName]
+    [avatarUrl, email, normalizedDisplayName]
   )
 
   return (
