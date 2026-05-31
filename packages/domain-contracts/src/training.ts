@@ -32,6 +32,8 @@ export const ListUserExercisesInputSchema = z.object({
   limit: z.number().int().min(1).max(100).default(20),
 })
 
+export const ListUserExerciseTagsInputSchema = z.object({})
+
 export const CreateUserExerciseInputSchema = z.object({
   name: z.string().min(1).max(200),
   notes: z.string().max(4000).nullable().optional(),
@@ -92,6 +94,7 @@ export const CreateUserNoteInputSchema = z.object({
 export type ListUserSessionsInput = z.infer<typeof ListUserSessionsInputSchema>
 export type CreateUserSessionInput = z.infer<typeof CreateUserSessionInputSchema>
 export type ListUserExercisesInput = z.infer<typeof ListUserExercisesInputSchema>
+export type ListUserExerciseTagsInput = z.infer<typeof ListUserExerciseTagsInputSchema>
 export type CreateUserExerciseInput = z.infer<typeof CreateUserExerciseInputSchema>
 export type UpdateUserExerciseInput = z.infer<typeof UpdateUserExerciseInputSchema>
 export type DeleteUserExerciseInput = z.infer<typeof DeleteUserExerciseInputSchema>
