@@ -18,8 +18,8 @@ export default async function TrainingProfilePage() {
     <TrainingShell
       email={user.email ?? "Unknown email"}
       title="Profile"
-      contentClassName="md:flex md:min-h-0 md:flex-1 md:flex-col"
-      desktopContentClassName="md:flex md:min-h-0 md:flex-1 md:flex-col"
+      contentClassName="pb-24 md:flex md:min-h-0 md:flex-1 md:flex-col"
+      desktopContentClassName="pb-24 md:flex md:min-h-0 md:flex-1 md:flex-col"
     >
       <ProfileManager />
     </TrainingShell>

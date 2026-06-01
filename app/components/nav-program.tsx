@@ -202,38 +202,35 @@ export function NavProgram() {
             className="group/collapsible"
             render={<SidebarMenuItem />}
           >
-            <div className="flex items-center gap-1">
-              <CollapsibleTrigger
-                render={
-                  <SidebarMenuButton
-                    tooltip="Sessions"
-                    isActive={isSessionsRoute}
-                    className="min-w-0 flex-1"
-                  />
-                }
-              >
-                <RouteIcon />
-                <span>Sessions</span>
-                <ChevronRightIcon className="ml-auto transition-transform duration-200 group-data-open/collapsible:rotate-90" />
-              </CollapsibleTrigger>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon-xs"
-                className="size-6 group-data-[collapsible=icon]:hidden"
-                aria-label="Create session"
-                disabled={isMutating}
-                onClick={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  void handleCreateSession()
-                }}
-              >
-                <PlusIcon />
-              </Button>
-            </div>
+            <CollapsibleTrigger
+              render={
+                <SidebarMenuButton
+                  tooltip="Sessions"
+                  isActive={isSessionsRoute}
+                />
+              }
+            >
+              <RouteIcon />
+              <span>Sessions</span>
+              <ChevronRightIcon className="ml-auto transition-transform duration-200 group-data-open/collapsible:rotate-90" />
+            </CollapsibleTrigger>
             <CollapsibleContent>
               <SidebarMenuSub className="mr-0 pr-0">
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton
+                    render={<button type="button" disabled={isMutating} />}
+                    onClick={() => {
+                      if (isMutating) {
+                        return
+                      }
+
+                      void handleCreateSession()
+                    }}
+                  >
+                    <PlusIcon className="size-3" />
+                    <span>New session</span>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
                 {isLoading ? (
                   <SidebarMenuSubItem>
                     <span className="px-2 text-xs text-sidebar-foreground/70">

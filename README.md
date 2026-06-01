@@ -4,6 +4,10 @@ Project planning and product direction live in the brainstorming document:
 
 - [docs/brainstorming.md](docs/brainstorming.md)
 
+## Future UI ideas
+
+- Evaluate the shadcn rich editor for a Notion-like markdown editing experience on profile notes: https://www.shadcn.io/tools/rich-editor
+
 ## Email provider
 
 Authentication emails (OTP / magic link flow) are sent using **Resend** via Supabase Custom SMTP.

@@ -7,11 +7,13 @@ export type Json =
   | Json[]
 
 export type UserIssueStatus = "active" | "resolved"
+export type UserIssuePriority = "high" | "medium" | "low"
 export type UserIssueRelationshipType =
   | "upstream_of"
   | "downstream_of"
   | "related_to"
 export type UserQualityStatus = "building" | "maintaining" | "inactive"
+export type UserQualityFrequencyPeriod = "day" | "week"
 export type UserConversationStatus = "active" | "archived" | "deleted"
 export type UserMessageRole = "user" | "assistant" | "system"
 export type UserMessageStatus = "queued" | "streaming" | "complete" | "failed"
@@ -149,6 +151,7 @@ export interface Database {
           user_id: string
           name: string
           notes: string | null
+          priority: UserIssuePriority | null
           status: UserIssueStatus
           sort_key: string | null
           first_noted_at: string
@@ -161,6 +164,7 @@ export interface Database {
           user_id: string
           name: string
           notes?: string | null
+          priority?: UserIssuePriority | null
           status: UserIssueStatus
           sort_key?: string | null
           first_noted_at?: string
@@ -173,6 +177,7 @@ export interface Database {
           user_id?: string
           name?: string
           notes?: string | null
+          priority?: UserIssuePriority | null
           status?: UserIssueStatus
           sort_key?: string | null
           first_noted_at?: string
@@ -297,7 +302,8 @@ export interface Database {
           user_id: string
           quality_id: string
           status: UserQualityStatus
-          training_frequency_target: string | null
+          training_frequency_count: number | null
+          training_frequency_period: UserQualityFrequencyPeriod | null
           notes: string | null
           sort_key: string | null
           created_at: string
@@ -308,7 +314,8 @@ export interface Database {
           user_id: string
           quality_id: string
           status: UserQualityStatus
-          training_frequency_target?: string | null
+          training_frequency_count?: number | null
+          training_frequency_period?: UserQualityFrequencyPeriod | null
           notes?: string | null
           sort_key?: string | null
           created_at?: string
@@ -319,7 +326,8 @@ export interface Database {
           user_id?: string
           quality_id?: string
           status?: UserQualityStatus
-          training_frequency_target?: string | null
+          training_frequency_count?: number | null
+          training_frequency_period?: UserQualityFrequencyPeriod | null
           notes?: string | null
           sort_key?: string | null
           created_at?: string

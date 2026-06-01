@@ -15,6 +15,7 @@ import type {
   UserMessage,
   UserProfile,
   UserQuality,
+  UserQualityFrequencyPeriod,
   UserQualityState,
   UserSession,
   UserSuperset,
@@ -113,6 +114,7 @@ export type UserExerciseWithTaxonomy = UserExercise & {
 export type IssuePayload = {
   name: string
   notes: string | null
+  priority: UserIssue["priority"]
   status: UserIssue["status"]
   sort_key?: string | null
 }
@@ -133,14 +135,16 @@ export type QualityStateCreatePayload = {
   quality_id?: string | null
   name: string
   status: UserQualityState["status"]
-  training_frequency_target: string | null
+  training_frequency_count: number | null
+  training_frequency_period: UserQualityFrequencyPeriod | null
   notes: string | null
   sort_key?: string | null
 }
 
 export type QualityStatePayload = {
   status: UserQualityState["status"]
-  training_frequency_target: string | null
+  training_frequency_count: number | null
+  training_frequency_period: UserQualityFrequencyPeriod | null
   notes: string | null
 }
 
@@ -1668,7 +1672,8 @@ export const trainingApi = createApi({
             .from("user_quality_states")
             .update({
               status: payload.status,
-              training_frequency_target: payload.training_frequency_target,
+              training_frequency_count: payload.training_frequency_count,
+              training_frequency_period: payload.training_frequency_period,
               notes: payload.notes,
               sort_key: payload.sort_key ?? null,
             })
@@ -1690,7 +1695,8 @@ export const trainingApi = createApi({
             user_id: userId,
             quality_id: qualityId,
             status: payload.status,
-            training_frequency_target: payload.training_frequency_target,
+            training_frequency_count: payload.training_frequency_count,
+            training_frequency_period: payload.training_frequency_period,
             notes: payload.notes,
             sort_key: payload.sort_key ?? null,
           })

@@ -3,19 +3,23 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type DragEvent,
   type FormEvent,
   type KeyboardEvent,
 } from "react"
-import { generateKeyBetween } from "fractional-indexing"
+import { generateKeyBetween, generateNKeysBetween } from "fractional-indexing"
 import {
   ActivityIcon,
   AlertCircleIcon,
   ChartSplineIcon,
   CheckCircle2Icon,
+  ChevronDownIcon,
   CircleSlashIcon,
+  ClockIcon,
+  FlagIcon,
   GripVerticalIcon,
   LoaderCircleIcon,
   PencilIcon,
@@ -47,9 +51,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { getTaxonomyColorDotClass } from "@/components/exercises/taxonomy-colors"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import type {
   UserProfilePayload,
@@ -58,7 +70,10 @@ import type {
 import { cn } from "@/lib/utils"
 import type {
   UserIssue,
+  UserIssuePriority,
   UserIssueStatus,
+  UserQuality,
+  UserQualityFrequencyPeriod,
   UserQualityStatus,
 } from "@/types/database"
 import type { HookActionResult } from "@/hooks/rtk-query-utils"
@@ -66,6 +81,7 @@ import type { HookActionResult } from "@/hooks/rtk-query-utils"
 type IssueFormValues = {
   name: string
   notes: string
+  priority: UserIssuePriority | null
   status: UserIssueStatus
 }
 
@@ -73,17 +89,27 @@ type QualityFormValues = {
   name: string
   notes: string
   status: UserQualityStatus
-  trainingFrequencyTarget: string
+  frequencyCount: number | null
+  frequencyPeriod: UserQualityFrequencyPeriod | null
+  frequencyMode: FrequencyTargetMode
 }
 
 type AboutMeMode = "plaintext" | "rendered"
 type AboutMeSaveStatus = "idle" | "saving" | "saved"
+type FrequencyTargetMode =
+  | "none"
+  | "daily"
+  | "weekly"
+  | "twice_weekly"
+  | "three_times_weekly"
+  | "custom"
 
 const ABOUT_ME_AUTOSAVE_DELAY_MS = 1200
 
 const EMPTY_ISSUE_FORM: IssueFormValues = {
   name: "",
   notes: "",
+  priority: null,
   status: "active",
 }
 
@@ -91,20 +117,91 @@ const EMPTY_QUALITY_FORM: QualityFormValues = {
   name: "",
   notes: "",
   status: "building",
-  trainingFrequencyTarget: "",
+  frequencyCount: null,
+  frequencyPeriod: null,
+  frequencyMode: "none",
 }
+
+const FREQUENCY_COUNTS = [1, 2, 3, 4, 5, 6, 7] as const
+const FREQUENCY_PERIOD_OPTIONS: {
+  value: UserQualityFrequencyPeriod
+  label: string
+}[] = [
+  { value: "day", label: "per day" },
+  { value: "week", label: "per week" },
+]
 
 function optionalText(value: string) {
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : null
 }
 
+function formatFrequencyTarget(
+  count: number | null,
+  period: UserQualityFrequencyPeriod | null
+) {
+  if (count === null || period === null) {
+    return null
+  }
+
+  if (period === "day" && count === 1) {
+    return "Daily"
+  }
+
+  if (period === "week" && count === 1) {
+    return "Weekly"
+  }
+
+  return `${count}x/${period}`
+}
+
+function getFrequencyTargetMode(
+  count: number | null,
+  period: UserQualityFrequencyPeriod | null
+): FrequencyTargetMode {
+  if (count === null || period === null) {
+    return "none"
+  }
+
+  if (period === "day" && count === 1) {
+    return "daily"
+  }
+
+  if (period === "week" && count === 1) {
+    return "weekly"
+  }
+
+  if (period === "week" && count === 2) {
+    return "twice_weekly"
+  }
+
+  if (period === "week" && count === 3) {
+    return "three_times_weekly"
+  }
+
+  return "custom"
+}
+
+function getQualityFrequencyLabel(qualityState: UserQualityStateWithQuality) {
+  return (
+    formatFrequencyTarget(
+      qualityState.training_frequency_count,
+      qualityState.training_frequency_period
+    ) ?? "No target yet."
+  )
+}
+
 function issueToFormValues(issue: UserIssue): IssueFormValues {
   return {
     name: issue.name,
     notes: issue.notes ?? "",
+    priority: issue.priority,
     status: issue.status,
   }
+}
+
+function formatPriority(priority: UserIssuePriority) {
+  return priority.charAt(0).toUpperCase() + priority.slice(1)
 }
 
 function qualityToFormValues(
@@ -114,11 +211,24 @@ function qualityToFormValues(
     name: qualityState.quality.name,
     notes: qualityState.notes ?? "",
     status: qualityState.status,
-    trainingFrequencyTarget: qualityState.training_frequency_target ?? "",
+    frequencyCount: qualityState.training_frequency_count,
+    frequencyPeriod: qualityState.training_frequency_period,
+    frequencyMode: getFrequencyTargetMode(
+      qualityState.training_frequency_count,
+      qualityState.training_frequency_period
+    ),
   }
 }
 
 function formatStatus(status: string) {
+  if (status === "building") {
+    return "Build"
+  }
+
+  if (status === "maintaining") {
+    return "Maintain"
+  }
+
   return status
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -137,7 +247,7 @@ function statusVariant(status: string): "default" | "outline" | "secondary" {
 
 function statusClassName(status: string) {
   if (status === "active") {
-    return "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300"
+    return "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300"
   }
   if (status === "resolved") {
     return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
@@ -179,8 +289,256 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-function selectClassName() {
-  return "h-9 w-full rounded-md border border-input bg-transparent px-2.5 py-1 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+function priorityClassName(priority: UserIssuePriority) {
+  if (priority === "high") {
+    return "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300"
+  }
+  if (priority === "medium") {
+    return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+  }
+  return "border-muted-foreground/25 bg-background text-muted-foreground"
+}
+
+function PriorityBadge({ priority }: { priority: UserIssuePriority }) {
+  return (
+    <Badge variant="outline" className={priorityClassName(priority)}>
+      <FlagIcon data-icon="inline-start" />
+      {formatPriority(priority)}
+    </Badge>
+  )
+}
+
+function FrequencyBadge({
+  qualityState,
+}: {
+  qualityState: UserQualityStateWithQuality
+}) {
+  return (
+    <Badge
+      variant="outline"
+      className="border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300"
+    >
+      <ClockIcon data-icon="inline-start" />
+      {getQualityFrequencyLabel(qualityState)}
+    </Badge>
+  )
+}
+
+function ExistingQualityPicker({
+  qualities,
+  selectedQualityId,
+  query,
+  onQueryChange,
+  onSelect,
+}: {
+  qualities: UserQuality[]
+  selectedQualityId: string | null
+  query: string
+  onQueryChange: (query: string) => void
+  onSelect: (quality: UserQuality) => void
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const selectedQuality = selectedQualityId
+    ? qualities.find((quality) => quality.id === selectedQualityId) ?? null
+    : null
+  const normalizedQuery = query.trim().toLowerCase()
+  const filteredQualities = qualities.filter((quality) =>
+    quality.name.toLowerCase().includes(normalizedQuery)
+  )
+
+  return (
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full justify-between"
+          />
+        }
+      >
+        <span className="truncate">
+          {selectedQuality?.name ?? "Select existing quality"}
+        </span>
+        <ChevronDownIcon data-icon="inline-end" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <div className="px-2 pb-1">
+          <Input
+            value={query}
+            placeholder="Search qualities"
+            onChange={(event) => onQueryChange(event.target.value)}
+            onPointerDown={(event) => event.stopPropagation()}
+            onKeyDownCapture={(event) => event.stopPropagation()}
+          />
+        </div>
+        <DropdownMenuSeparator />
+        {filteredQualities.length > 0 ? (
+          filteredQualities.map((quality) => (
+            <DropdownMenuItem
+              key={quality.id}
+              onClick={(event) => {
+                event.preventDefault()
+                onSelect(quality)
+                setIsOpen(false)
+              }}
+            >
+              <span
+                className={cn(
+                  "size-2.5 shrink-0 rounded-full border border-border",
+                  getTaxonomyColorDotClass(quality.display_color)
+                )}
+                aria-hidden="true"
+              />
+              <span className="truncate">{quality.name}</span>
+            </DropdownMenuItem>
+          ))
+        ) : (
+          <div className="px-2 py-1.5 text-sm text-muted-foreground">
+            No matching qualities
+          </div>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function DropdownSelect<TValue extends string | null>({
+  id,
+  value,
+  options,
+  onChange,
+  ariaLabel,
+}: {
+  id?: string
+  value: TValue
+  options: { value: TValue; label: string }[]
+  onChange: (value: TValue) => void
+  ariaLabel?: string
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const selectedOption =
+    options.find((option) => option.value === value) ?? options[0]
+
+  return (
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            id={id}
+            type="button"
+            variant="outline"
+            className="w-full justify-between"
+            aria-label={ariaLabel}
+          />
+        }
+      >
+        <span className="truncate">{selectedOption?.label}</span>
+        <ChevronDownIcon data-icon="inline-end" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        {options.map((option) => (
+          <DropdownMenuItem
+            key={option.value ?? "none"}
+            onClick={(event) => {
+              event.preventDefault()
+              onChange(option.value)
+              setIsOpen(false)
+            }}
+          >
+            <span className="truncate">{option.label}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function FrequencyTargetInput({
+  count,
+  period,
+  mode,
+  onChange,
+}: {
+  count: number | null
+  period: UserQualityFrequencyPeriod | null
+  mode: FrequencyTargetMode
+  onChange: (
+    count: number | null,
+    period: UserQualityFrequencyPeriod | null,
+    mode: FrequencyTargetMode
+  ) => void
+}) {
+  const customCount = count ?? 2
+  const customPeriod = period ?? "week"
+
+  return (
+    <div className="space-y-2">
+      <DropdownSelect
+        id="quality-target"
+        value={mode}
+        options={[
+          { value: "none", label: "No target" },
+          { value: "daily", label: "Daily" },
+          { value: "weekly", label: "Weekly" },
+          { value: "twice_weekly", label: "2x/week" },
+          { value: "three_times_weekly", label: "3x/week" },
+          { value: "custom", label: "Custom" },
+        ]}
+        onChange={(nextMode) => {
+          if (nextMode === "none") {
+            onChange(null, null, nextMode)
+            return
+          }
+
+          if (nextMode === "daily") {
+            onChange(1, "day", nextMode)
+            return
+          }
+
+          if (nextMode === "weekly") {
+            onChange(1, "week", nextMode)
+            return
+          }
+
+          if (nextMode === "twice_weekly") {
+            onChange(2, "week", nextMode)
+            return
+          }
+
+          if (nextMode === "three_times_weekly") {
+            onChange(3, "week", nextMode)
+            return
+          }
+
+          onChange(2, "week", nextMode)
+        }}
+      />
+      {mode === "custom" ? (
+        <div className="grid gap-2 sm:grid-cols-2">
+          <DropdownSelect
+            ariaLabel="Times"
+            value={String(customCount)}
+            options={FREQUENCY_COUNTS.map((option) => ({
+              value: String(option),
+              label: `${option}x`,
+            }))}
+            onChange={(nextCount) =>
+              onChange(Number(nextCount), customPeriod, "custom")
+            }
+          />
+          <DropdownSelect
+            ariaLabel="Period"
+            value={customPeriod}
+            options={FREQUENCY_PERIOD_OPTIONS}
+            onChange={(nextPeriod) =>
+              onChange(customCount, nextPeriod, "custom")
+            }
+          />
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
 type SortableProfileItem = {
@@ -192,7 +550,7 @@ type DropPlacement = "before" | "after"
 
 function getLastSortKey(items: SortableProfileItem[]) {
   for (let index = items.length - 1; index >= 0; index -= 1) {
-    if (items[index].sort_key) {
+    if (isValidSortKey(items[index].sort_key)) {
       return items[index].sort_key
     }
   }
@@ -202,7 +560,7 @@ function getLastSortKey(items: SortableProfileItem[]) {
 
 function getPreviousSortKey(items: SortableProfileItem[], startIndex: number) {
   for (let index = startIndex; index >= 0; index -= 1) {
-    if (items[index].sort_key) {
+    if (isValidSortKey(items[index].sort_key)) {
       return items[index].sort_key
     }
   }
@@ -212,12 +570,25 @@ function getPreviousSortKey(items: SortableProfileItem[], startIndex: number) {
 
 function getNextSortKey(items: SortableProfileItem[], startIndex: number) {
   for (let index = startIndex; index < items.length; index += 1) {
-    if (items[index].sort_key) {
+    if (isValidSortKey(items[index].sort_key)) {
       return items[index].sort_key
     }
   }
 
   return null
+}
+
+function isValidSortKey(sortKey: string | null) {
+  if (!sortKey) {
+    return false
+  }
+
+  try {
+    generateKeyBetween(sortKey, null)
+    return true
+  } catch {
+    return false
+  }
 }
 
 function getDropPlacement(event: DragEvent<HTMLElement>): DropPlacement {
@@ -240,17 +611,73 @@ function getSortKeyForDrop(
     return null
   }
 
+  const targetSortKey = isValidSortKey(nextOrder[targetIndex]?.sort_key)
+    ? nextOrder[targetIndex].sort_key
+    : null
   const previousKey =
     placement === "before"
       ? getPreviousSortKey(nextOrder, targetIndex - 1)
-      : nextOrder[targetIndex]?.sort_key ??
-        getPreviousSortKey(nextOrder, targetIndex - 1)
+      : targetSortKey ?? getPreviousSortKey(nextOrder, targetIndex - 1)
   const nextKey =
     placement === "before"
-      ? nextOrder[targetIndex]?.sort_key ?? getNextSortKey(nextOrder, targetIndex)
+      ? targetSortKey ?? getNextSortKey(nextOrder, targetIndex)
       : getNextSortKey(nextOrder, targetIndex + 1)
 
-  return generateKeyBetween(previousKey, nextKey)
+  try {
+    return generateKeyBetween(previousKey, nextKey)
+  } catch {
+    return null
+  }
+}
+
+function getItemsForDrop<TItem extends SortableProfileItem>(
+  items: TItem[],
+  draggedItemId: string,
+  targetItemId: string,
+  placement: DropPlacement
+) {
+  const draggedItem = items.find((item) => item.id === draggedItemId)
+  if (!draggedItem) {
+    return null
+  }
+
+  const nextOrder = items.filter((item) => item.id !== draggedItemId)
+  const targetIndex = nextOrder.findIndex((item) => item.id === targetItemId)
+  if (targetIndex < 0) {
+    return null
+  }
+
+  nextOrder.splice(
+    placement === "before" ? targetIndex : targetIndex + 1,
+    0,
+    draggedItem
+  )
+
+  return nextOrder
+}
+
+function hasUnusableSortKeys(items: SortableProfileItem[]) {
+  const seenSortKeys = new Set<string>()
+  let previousSortKey: string | null = null
+
+  return items.some((item) => {
+    const sortKey = item.sort_key
+    if (!sortKey || !isValidSortKey(sortKey) || seenSortKeys.has(sortKey)) {
+      return true
+    }
+
+    if (previousSortKey) {
+      try {
+        generateKeyBetween(previousSortKey, sortKey)
+      } catch {
+        return true
+      }
+    }
+
+    seenSortKeys.add(sortKey)
+    previousSortKey = sortKey
+    return false
+  })
 }
 
 function handleRowKeyboardOpen(
@@ -508,6 +935,7 @@ function AboutMeEditor({
 export function ProfileManager() {
   const {
     issues,
+    qualities,
     qualityStates,
     userProfile,
     isLoading,
@@ -537,6 +965,10 @@ export function ProfileManager() {
   const [issueForm, setIssueForm] = useState<IssueFormValues>(EMPTY_ISSUE_FORM)
   const [qualityForm, setQualityForm] =
     useState<QualityFormValues>(EMPTY_QUALITY_FORM)
+  const [selectedQualityId, setSelectedQualityId] = useState<string | null>(
+    null
+  )
+  const [qualityPickerQuery, setQualityPickerQuery] = useState("")
   const [issueFormError, setIssueFormError] = useState<string | null>(null)
   const [qualityFormError, setQualityFormError] = useState<string | null>(null)
   const [draggedIssueId, setDraggedIssueId] = useState<string | null>(null)
@@ -549,6 +981,25 @@ export function ProfileManager() {
   )
   const [qualityDropPlacement, setQualityDropPlacement] =
     useState<DropPlacement>("before")
+  const availableQualities = useMemo(() => {
+    const visibleQualityIds = new Set(
+      qualityStates.map((qualityState) => qualityState.quality.id)
+    )
+
+    return qualities.filter((quality) => !visibleQualityIds.has(quality.id))
+  }, [qualities, qualityStates])
+
+  function resetQualityPicker() {
+    setSelectedQualityId(null)
+    setQualityPickerQuery("")
+  }
+
+  function getFrequencyTargetPayload() {
+    return {
+      training_frequency_count: qualityForm.frequencyCount,
+      training_frequency_period: qualityForm.frequencyPeriod,
+    }
+  }
 
   function openNewIssueForm() {
     setEditingIssue(null)
@@ -574,6 +1025,7 @@ export function ProfileManager() {
   function openNewQualityForm() {
     setEditingQuality(null)
     setQualityForm(EMPTY_QUALITY_FORM)
+    resetQualityPicker()
     setQualityFormError(null)
     setIsQualityDialogOpen(true)
   }
@@ -581,6 +1033,7 @@ export function ProfileManager() {
   function openEditQualityForm(quality: UserQualityStateWithQuality) {
     setEditingQuality(quality)
     setQualityForm(qualityToFormValues(quality))
+    resetQualityPicker()
     setQualityFormError(null)
     setIsQualityDialogOpen(true)
   }
@@ -589,6 +1042,7 @@ export function ProfileManager() {
     setIsQualityDialogOpen(false)
     setEditingQuality(null)
     setQualityForm(EMPTY_QUALITY_FORM)
+    resetQualityPicker()
     setQualityFormError(null)
   }
 
@@ -630,6 +1084,7 @@ export function ProfileManager() {
     const payload = {
       name,
       notes: optionalText(issueForm.notes),
+      priority: issueForm.priority,
       status: issueForm.status,
       sort_key: editingIssue
         ? editingIssue.sort_key
@@ -673,13 +1128,13 @@ export function ProfileManager() {
       return
     }
 
+    const frequencyTargetPayload = getFrequencyTargetPayload()
     const payload = {
+      quality_id: selectedQualityId,
       name,
       notes: optionalText(qualityForm.notes),
       status: qualityForm.status,
-      training_frequency_target: optionalText(
-        qualityForm.trainingFrequencyTarget
-      ),
+      ...frequencyTargetPayload,
       sort_key: editingQuality
         ? editingQuality.sort_key
         : generateKeyBetween(getLastSortKey(qualityStates), null),
@@ -702,7 +1157,8 @@ export function ProfileManager() {
     const result = editingQuality
       ? await updateQualityState(editingQuality.id, {
           status: payload.status,
-          training_frequency_target: payload.training_frequency_target,
+          training_frequency_count: payload.training_frequency_count,
+          training_frequency_period: payload.training_frequency_period,
           notes: payload.notes,
         })
       : await createQualityState(payload)
@@ -720,11 +1176,10 @@ export function ProfileManager() {
       return
     }
 
+    const frequencyTargetPayload = getFrequencyTargetPayload()
     const result = await updateQualityState(editingQuality.id, {
       status: "inactive",
-      training_frequency_target: optionalText(
-        qualityForm.trainingFrequencyTarget
-      ),
+      ...frequencyTargetPayload,
       notes: optionalText(qualityForm.notes),
     })
     if (result.error) {
@@ -745,7 +1200,31 @@ export function ProfileManager() {
     event.dataTransfer.setData("application/x-profile-issue-id", issueId)
   }
 
-  function handleIssueDrop(
+  async function reindexIssues(issuesToIndex: UserIssue[]) {
+    const sortKeys = generateNKeysBetween(null, null, issuesToIndex.length)
+    const results = await Promise.all(
+      issuesToIndex.map((issue, index) =>
+        reorderIssue(issue.id, sortKeys[index])
+      )
+    )
+
+    return results.find((result) => result.error)?.error ?? null
+  }
+
+  async function reindexQualityStates(
+    qualityStatesToIndex: UserQualityStateWithQuality[]
+  ) {
+    const sortKeys = generateNKeysBetween(null, null, qualityStatesToIndex.length)
+    const results = await Promise.all(
+      qualityStatesToIndex.map((qualityState, index) =>
+        reorderQualityState(qualityState.id, sortKeys[index])
+      )
+    )
+
+    return results.find((result) => result.error)?.error ?? null
+  }
+
+  async function handleIssueDrop(
     event: DragEvent<HTMLElement>,
     targetIssueId: string
   ) {
@@ -762,14 +1241,31 @@ export function ProfileManager() {
       return
     }
 
+    const placement = getDropPlacement(event)
     const sortKey = getSortKeyForDrop(
       issues,
       droppedIssueId,
       targetIssueId,
-      getDropPlacement(event)
+      placement
     )
-    if (sortKey) {
-      void reorderIssue(droppedIssueId, sortKey)
+    if (sortKey && !hasUnusableSortKeys(issues)) {
+      const result = await reorderIssue(droppedIssueId, sortKey)
+      if (result.error) {
+        setIssueFormError(result.error)
+      }
+    } else {
+      const nextOrder = getItemsForDrop(
+        issues,
+        droppedIssueId,
+        targetIssueId,
+        placement
+      )
+      if (nextOrder) {
+        const reindexError = await reindexIssues(nextOrder)
+        if (reindexError) {
+          setIssueFormError(reindexError)
+        }
+      }
     }
 
     setDraggedIssueId(null)
@@ -787,7 +1283,7 @@ export function ProfileManager() {
     event.dataTransfer.setData("application/x-profile-quality-id", qualityId)
   }
 
-  function handleQualityDrop(
+  async function handleQualityDrop(
     event: DragEvent<HTMLElement>,
     targetQualityId: string
   ) {
@@ -804,14 +1300,31 @@ export function ProfileManager() {
       return
     }
 
+    const placement = getDropPlacement(event)
     const sortKey = getSortKeyForDrop(
       qualityStates,
       droppedQualityId,
       targetQualityId,
-      getDropPlacement(event)
+      placement
     )
-    if (sortKey) {
-      void reorderQualityState(droppedQualityId, sortKey)
+    if (sortKey && !hasUnusableSortKeys(qualityStates)) {
+      const result = await reorderQualityState(droppedQualityId, sortKey)
+      if (result.error) {
+        setQualityFormError(result.error)
+      }
+    } else {
+      const nextOrder = getItemsForDrop(
+        qualityStates,
+        droppedQualityId,
+        targetQualityId,
+        placement
+      )
+      if (nextOrder) {
+        const reindexError = await reindexQualityStates(nextOrder)
+        if (reindexError) {
+          setQualityFormError(reindexError)
+        }
+      }
     }
 
     setDraggedQualityId(null)
@@ -821,13 +1334,6 @@ export function ProfileManager() {
 
   return (
     <div className="min-h-0 space-y-4">
-      <AboutMeEditor
-        key={userProfile?.updated_at ?? "empty-profile"}
-        initialAboutMe={userProfile?.about_me ?? ""}
-        isLoading={isUserProfileLoading}
-        updateUserProfile={updateUserProfile}
-      />
-
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="min-w-0 space-y-3">
           <div className="flex items-start justify-between gap-3">
@@ -926,7 +1432,12 @@ export function ProfileManager() {
                             {issue.notes ?? "No notes yet."}
                           </p>
                         </div>
-                        <StatusBadge status={issue.status} />
+                        <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+                          {issue.priority ? (
+                            <PriorityBadge priority={issue.priority} />
+                          ) : null}
+                          <StatusBadge status={issue.status} />
+                        </div>
                       </div>
                     </div>
                   </article>
@@ -1031,12 +1542,14 @@ export function ProfileManager() {
                           <p className="truncate font-medium text-foreground">
                             {quality.quality.name}
                           </p>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {quality.training_frequency_target ??
-                              "No target yet."}
+                          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                            {quality.notes ?? "No notes yet."}
                           </p>
                         </div>
-                        <StatusBadge status={quality.status} />
+                        <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+                          <FrequencyBadge qualityState={quality} />
+                          <StatusBadge status={quality.status} />
+                        </div>
                       </div>
                     </div>
                   </article>
@@ -1046,6 +1559,13 @@ export function ProfileManager() {
           </div>
         </section>
       </div>
+
+      <AboutMeEditor
+        key={userProfile?.updated_at ?? "empty-profile"}
+        initialAboutMe={userProfile?.about_me ?? ""}
+        isLoading={isUserProfileLoading}
+        updateUserProfile={updateUserProfile}
+      />
 
       <Dialog
         open={isIssueDialogOpen}
@@ -1062,8 +1582,8 @@ export function ProfileManager() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="grid gap-3 py-4 sm:grid-cols-[1fr_140px]">
-              <div className="space-y-2">
+            <div className="grid gap-3 py-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="issue-name">Issue</Label>
                 <Input
                   id="issue-name"
@@ -1081,20 +1601,39 @@ export function ProfileManager() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="issue-status">Status</Label>
-                <select
+                <DropdownSelect
                   id="issue-status"
-                  className={selectClassName()}
                   value={issueForm.status}
-                  onChange={(event) =>
+                  options={[
+                    { value: "active", label: "Active" },
+                    { value: "resolved", label: "Resolved" },
+                  ]}
+                  onChange={(status) =>
                     setIssueForm((current) => ({
                       ...current,
-                      status: event.target.value as UserIssueStatus,
+                      status,
                     }))
                   }
-                >
-                  <option value="active">Active</option>
-                  <option value="resolved">Resolved</option>
-                </select>
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="issue-priority">Priority</Label>
+                <DropdownSelect
+                  id="issue-priority"
+                  value={issueForm.priority}
+                  options={[
+                    { value: null, label: "No priority" },
+                    { value: "high", label: "High" },
+                    { value: "medium", label: "Medium" },
+                    { value: "low", label: "Low" },
+                  ]}
+                  onChange={(priority) =>
+                    setIssueForm((current) => ({
+                      ...current,
+                      priority,
+                    }))
+                  }
+                />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="issue-notes">Notes</Label>
@@ -1168,6 +1707,24 @@ export function ProfileManager() {
             </DialogHeader>
 
             <div className="grid gap-3 py-4 sm:grid-cols-[1fr_150px]">
+              {!editingQuality ? (
+                <div className="sm:col-span-2">
+                  <ExistingQualityPicker
+                    qualities={availableQualities}
+                    selectedQualityId={selectedQualityId}
+                    query={qualityPickerQuery}
+                    onQueryChange={setQualityPickerQuery}
+                    onSelect={(quality) => {
+                      setSelectedQualityId(quality.id)
+                      setQualityForm((current) => ({
+                        ...current,
+                        name: quality.name,
+                      }))
+                      setQualityFormError(null)
+                    }}
+                  />
+                </div>
+              ) : null}
               <div className="space-y-2">
                 <Label htmlFor="quality-name">Quality</Label>
                 <Input
@@ -1176,43 +1733,45 @@ export function ProfileManager() {
                   maxLength={120}
                   placeholder="Ankle dorsiflexion control"
                   autoFocus
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    setSelectedQualityId(null)
                     setQualityForm((current) => ({
                       ...current,
                       name: event.target.value,
                     }))
-                  }
+                  }}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="quality-status">Status</Label>
-                <select
+                <DropdownSelect
                   id="quality-status"
-                  className={selectClassName()}
                   value={qualityForm.status}
-                  onChange={(event) =>
+                  options={[
+                    { value: "building", label: "Building" },
+                    { value: "maintaining", label: "Maintaining" },
+                    { value: "inactive", label: "Inactive" },
+                  ]}
+                  onChange={(status) =>
                     setQualityForm((current) => ({
                       ...current,
-                      status: event.target.value as UserQualityStatus,
+                      status,
                     }))
                   }
-                >
-                  <option value="building">Building</option>
-                  <option value="maintaining">Maintaining</option>
-                  <option value="inactive">Inactive</option>
-                </select>
+                />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="quality-target">Frequency Target</Label>
-                <Input
-                  id="quality-target"
-                  value={qualityForm.trainingFrequencyTarget}
-                  maxLength={120}
-                  placeholder="Daily warmup exposure"
-                  onChange={(event) =>
+                <FrequencyTargetInput
+                  count={qualityForm.frequencyCount}
+                  period={qualityForm.frequencyPeriod}
+                  mode={qualityForm.frequencyMode}
+                  onChange={(frequencyCount, frequencyPeriod, frequencyMode) =>
                     setQualityForm((current) => ({
                       ...current,
-                      trainingFrequencyTarget: event.target.value,
+                      frequencyCount,
+                      frequencyPeriod,
+                      frequencyMode,
                     }))
                   }
                 />
