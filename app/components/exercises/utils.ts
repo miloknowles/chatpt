@@ -124,10 +124,10 @@ export function toFormValues(exercise: UserExercise): ExerciseFormValues {
       name: type.name,
       display_color: type.display_color,
     })),
-    bodyRegions: exercise.body_regions.map((bodyRegion) => ({
-      id: bodyRegion.id,
-      name: bodyRegion.name,
-      display_color: bodyRegion.display_color,
+    qualities: exercise.qualities.map((quality) => ({
+      id: quality.id,
+      name: quality.name,
+      display_color: quality.display_color,
     })),
     ...performanceValues,
   }
@@ -182,7 +182,7 @@ export function toPayload(values: ExerciseFormValues) {
       video_url: values.videoUrl.trim() || null,
       performance,
       types: toTaxonomyPayload(values.types),
-      body_regions: toTaxonomyPayload(values.bodyRegions),
+      qualities: toTaxonomyPayload(values.qualities),
     },
   }
 }

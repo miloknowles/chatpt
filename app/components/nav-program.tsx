@@ -10,6 +10,7 @@ import {
   PencilIcon,
   PlusIcon,
   RouteIcon,
+  SparklesIcon,
   TagsIcon,
   Trash2Icon,
 } from "lucide-react"
@@ -161,16 +162,17 @@ export function NavProgram() {
                     isActive={pathname === "/training/exercises"}
                     render={<a href="/training/exercises" />}
                   >
+                    <LibraryBigIcon />
                     <span>Exercise Library</span>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
                 <SidebarMenuSubItem>
                   <SidebarMenuSubButton
-                    isActive={pathname === "/training/exercises/types"}
-                    render={<a href="/training/exercises/types" />}
+                    isActive={pathname === "/training/exercises/qualities"}
+                    render={<a href="/training/exercises/qualities" />}
                   >
-                    <TagsIcon />
-                    <span>Exercise Types</span>
+                    <SparklesIcon />
+                    <span>Trained Qualities</span>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
                 <SidebarMenuSubItem>
@@ -180,6 +182,15 @@ export function NavProgram() {
                   >
                     <TagsIcon />
                     <span>Body Regions</span>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton
+                    isActive={pathname === "/training/exercises/types"}
+                    render={<a href="/training/exercises/types" />}
+                  >
+                    <TagsIcon />
+                    <span>Exercise Types</span>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
               </SidebarMenuSub>

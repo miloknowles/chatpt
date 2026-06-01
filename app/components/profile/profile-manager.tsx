@@ -1,6 +1,9 @@
 "use client"
 
 import {
+  useCallback,
+  useEffect,
+  useRef,
   useState,
   type DragEvent,
   type FormEvent,
@@ -10,9 +13,11 @@ import { generateKeyBetween } from "fractional-indexing"
 import {
   ActivityIcon,
   GripVerticalIcon,
+  LoaderCircleIcon,
   PencilIcon,
   PlusIcon,
   SparklesIcon,
+  Trash2Icon,
   XIcon,
 } from "lucide-react"
 import ReactMarkdown from "react-markdown"
@@ -24,13 +29,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useUserProfile } from "@/hooks/use-user-profile"
+import type {
+  UserProfilePayload,
+  UserQualityStateWithQuality,
+} from "@/lib/redux/training-api"
 import { cn } from "@/lib/utils"
 import type {
   UserIssue,
   UserIssueStatus,
-  UserQuality,
   UserQualityStatus,
 } from "@/types/database"
+import type { HookActionResult } from "@/hooks/rtk-query-utils"
 
 type IssueFormValues = {
   name: string
@@ -46,6 +55,9 @@ type QualityFormValues = {
 }
 
 type AboutMeMode = "plaintext" | "rendered"
+type AboutMeSaveStatus = "idle" | "saving" | "saved"
+
+const ABOUT_ME_AUTOSAVE_DELAY_MS = 1200
 
 const EMPTY_ISSUE_FORM: IssueFormValues = {
   name: "",
@@ -73,12 +85,14 @@ function issueToFormValues(issue: UserIssue): IssueFormValues {
   }
 }
 
-function qualityToFormValues(quality: UserQuality): QualityFormValues {
+function qualityToFormValues(
+  qualityState: UserQualityStateWithQuality
+): QualityFormValues {
   return {
-    name: quality.name,
-    notes: quality.notes ?? "",
-    status: quality.status,
-    trainingFrequencyTarget: quality.training_frequency_target ?? "",
+    name: qualityState.quality.name,
+    notes: qualityState.notes ?? "",
+    status: qualityState.status,
+    trainingFrequencyTarget: qualityState.training_frequency_target ?? "",
   }
 }
 
@@ -271,28 +285,186 @@ function MarkdownPreview({ content }: { content: string }) {
   )
 }
 
+function AboutMeEditor({
+  initialAboutMe,
+  isLoading,
+  updateUserProfile,
+}: {
+  initialAboutMe: string
+  isLoading: boolean
+  updateUserProfile: (payload: UserProfilePayload) => HookActionResult
+}) {
+  const [aboutMe, setAboutMe] = useState(initialAboutMe)
+  const [isAboutMeDirty, setIsAboutMeDirty] = useState(false)
+  const [aboutMeError, setAboutMeError] = useState<string | null>(null)
+  const [aboutMeMode, setAboutMeMode] = useState<AboutMeMode>("plaintext")
+  const [saveStatus, setSaveStatus] = useState<AboutMeSaveStatus>("idle")
+  const savedAboutMeRef = useRef(initialAboutMe)
+  const latestAboutMeRef = useRef(initialAboutMe)
+  const saveRequestIdRef = useRef(0)
+  const hasAboutMe = aboutMe.trim().length > 0
+
+  const saveAboutMe = useCallback(
+    async (value: string) => {
+      if (value === savedAboutMeRef.current) {
+        setIsAboutMeDirty(false)
+        setSaveStatus("saved")
+        return
+      }
+
+      const saveRequestId = saveRequestIdRef.current + 1
+      saveRequestIdRef.current = saveRequestId
+      setAboutMeError(null)
+      setSaveStatus("saving")
+
+      const result = await updateUserProfile({
+        about_me: value,
+      })
+
+      if (saveRequestId !== saveRequestIdRef.current) {
+        return
+      }
+
+      if (result.error) {
+        setAboutMeError(result.error)
+        setSaveStatus("idle")
+        return
+      }
+
+      savedAboutMeRef.current = value
+      setIsAboutMeDirty(latestAboutMeRef.current !== value)
+      setSaveStatus("saved")
+    },
+    [updateUserProfile]
+  )
+
+  useEffect(() => {
+    if (!isAboutMeDirty) {
+      return
+    }
+
+    const autosaveTimer = window.setTimeout(() => {
+      void saveAboutMe(aboutMe)
+    }, ABOUT_ME_AUTOSAVE_DELAY_MS)
+
+    return () => {
+      window.clearTimeout(autosaveTimer)
+    }
+  }, [aboutMe, isAboutMeDirty, saveAboutMe])
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="min-w-0 font-heading text-base font-medium">
+          About Me
+        </h2>
+        <div className="flex shrink-0 items-center gap-2">
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            {isLoading
+              ? "Loading..."
+              : saveStatus === "saving"
+              ? "Saving..."
+              : saveStatus === "saved"
+                ? "Saved"
+                : isAboutMeDirty
+                  ? "Unsaved"
+                  : ""}
+          </p>
+          <div className="inline-flex rounded-md border border-border bg-background p-0.5 shadow-xs">
+            <Button
+              type="button"
+              variant={aboutMeMode === "plaintext" ? "secondary" : "ghost"}
+              size="sm"
+              aria-pressed={aboutMeMode === "plaintext"}
+              onClick={() => setAboutMeMode("plaintext")}
+              className="h-7 px-2 text-xs"
+            >
+              Edit
+            </Button>
+            <Button
+              type="button"
+              variant={aboutMeMode === "rendered" ? "secondary" : "ghost"}
+              size="sm"
+              aria-pressed={aboutMeMode === "rendered"}
+              onClick={() => setAboutMeMode("rendered")}
+              className="h-7 px-2 text-xs"
+            >
+              Preview
+            </Button>
+          </div>
+        </div>
+      </div>
+      {isLoading ? (
+        <div className="relative">
+          <Textarea
+            value=""
+            disabled
+            placeholder="Loading profile..."
+            className="min-h-32 resize-y bg-background pr-10"
+          />
+          <LoaderCircleIcon className="absolute right-3 top-3 size-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : aboutMeMode === "plaintext" ? (
+        <Textarea
+          value={aboutMe}
+          onChange={(event) => {
+            const nextValue = event.target.value
+            setAboutMe(nextValue)
+            latestAboutMeRef.current = nextValue
+            setIsAboutMeDirty(nextValue !== savedAboutMeRef.current)
+            setSaveStatus("idle")
+            setAboutMeError(null)
+          }}
+          onBlur={(event) => {
+            void saveAboutMe(event.target.value)
+          }}
+          placeholder="Training background, goals, constraints, and context"
+          className="min-h-32 resize-y bg-background"
+        />
+      ) : (
+        <div className="min-h-32 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs">
+          {hasAboutMe ? (
+            <div className="space-y-2 leading-6">
+              <MarkdownPreview content={aboutMe} />
+            </div>
+          ) : (
+            <p className="text-muted-foreground">No about me yet.</p>
+          )}
+        </div>
+      )}
+      {aboutMeError ? (
+        <p className="text-sm text-destructive">{aboutMeError}</p>
+      ) : null}
+    </section>
+  )
+}
+
 export function ProfileManager() {
   const {
     issues,
-    qualities,
+    qualityStates,
+    userProfile,
     isLoading,
+    isUserProfileLoading,
     isMutating,
     error,
     mutationError,
     createIssue,
     updateIssue,
     reorderIssue,
-    createQuality,
+    updateUserProfile,
     updateQuality,
-    reorderQuality,
+    createQualityState,
+    updateQualityState,
+    reorderQualityState,
+    deleteQualityState,
   } = useUserProfile()
 
   const [isEditingIssue, setIsEditingIssue] = useState(false)
   const [isEditingQuality, setIsEditingQuality] = useState(false)
   const [editingIssue, setEditingIssue] = useState<UserIssue | null>(null)
-  const [editingQuality, setEditingQuality] = useState<UserQuality | null>(null)
-  const [aboutMe, setAboutMe] = useState("")
-  const [aboutMeMode, setAboutMeMode] = useState<AboutMeMode>("plaintext")
+  const [editingQuality, setEditingQuality] =
+    useState<UserQualityStateWithQuality | null>(null)
   const [issueForm, setIssueForm] = useState<IssueFormValues>(EMPTY_ISSUE_FORM)
   const [qualityForm, setQualityForm] =
     useState<QualityFormValues>(EMPTY_QUALITY_FORM)
@@ -308,7 +480,6 @@ export function ProfileManager() {
   )
   const [qualityDropPlacement, setQualityDropPlacement] =
     useState<DropPlacement>("before")
-  const hasAboutMe = aboutMe.trim().length > 0
 
   function openNewIssueForm() {
     setEditingIssue(null)
@@ -338,7 +509,7 @@ export function ProfileManager() {
     setIsEditingQuality(true)
   }
 
-  function openEditQualityForm(quality: UserQuality) {
+  function openEditQualityForm(quality: UserQualityStateWithQuality) {
     setEditingQuality(quality)
     setQualityForm(qualityToFormValues(quality))
     setQualityFormError(null)
@@ -399,16 +570,47 @@ export function ProfileManager() {
       training_frequency_target: optionalText(
         qualityForm.trainingFrequencyTarget
       ),
-      body_region: editingQuality?.body_region ?? null,
-      training_goal: editingQuality?.training_goal ?? null,
       sort_key: editingQuality
         ? editingQuality.sort_key
-        : generateKeyBetween(getLastSortKey(qualities), null),
+        : generateKeyBetween(getLastSortKey(qualityStates), null),
     }
-    const result = editingQuality
-      ? await updateQuality(editingQuality.id, payload)
-      : await createQuality(payload)
+    if (editingQuality && editingQuality.quality.name !== name) {
+      const qualityResult = await updateQuality(editingQuality.quality.id, {
+        name,
+        notes: editingQuality.quality.notes,
+        body_region_id: editingQuality.quality.body_region_id,
+        display_color: editingQuality.quality.display_color,
+        sort_key: editingQuality.quality.sort_key,
+      })
 
+      if (qualityResult.error) {
+        setQualityFormError(qualityResult.error)
+        return
+      }
+    }
+
+    const result = editingQuality
+      ? await updateQualityState(editingQuality.id, {
+          status: payload.status,
+          training_frequency_target: payload.training_frequency_target,
+          notes: payload.notes,
+        })
+      : await createQualityState(payload)
+
+    if (result.error) {
+      setQualityFormError(result.error)
+      return
+    }
+
+    closeQualityForm()
+  }
+
+  async function handleRemoveQualityFromProfile() {
+    if (!editingQuality) {
+      return
+    }
+
+    const result = await deleteQualityState(editingQuality.id)
     if (result.error) {
       setQualityFormError(result.error)
       return
@@ -487,13 +689,13 @@ export function ProfileManager() {
     }
 
     const sortKey = getSortKeyForDrop(
-      qualities,
+      qualityStates,
       droppedQualityId,
       targetQualityId,
       getDropPlacement(event)
     )
     if (sortKey) {
-      void reorderQuality(droppedQualityId, sortKey)
+      void reorderQualityState(droppedQualityId, sortKey)
     }
 
     setDraggedQualityId(null)
@@ -503,53 +705,12 @@ export function ProfileManager() {
 
   return (
     <div className="min-h-0 space-y-4">
-      <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="min-w-0 font-heading text-base font-medium">
-            About Me
-          </h2>
-          <div className="inline-flex shrink-0 rounded-md border border-border bg-background p-0.5 shadow-xs">
-            <Button
-              type="button"
-              variant={aboutMeMode === "plaintext" ? "secondary" : "ghost"}
-              size="sm"
-              aria-pressed={aboutMeMode === "plaintext"}
-              onClick={() => setAboutMeMode("plaintext")}
-              className="h-7 px-2 text-xs"
-            >
-              Edit
-            </Button>
-            <Button
-              type="button"
-              variant={aboutMeMode === "rendered" ? "secondary" : "ghost"}
-              size="sm"
-              aria-pressed={aboutMeMode === "rendered"}
-              onClick={() => setAboutMeMode("rendered")}
-              className="h-7 px-2 text-xs"
-            >
-              Preview
-            </Button>
-          </div>
-        </div>
-        {aboutMeMode === "plaintext" ? (
-          <Textarea
-            value={aboutMe}
-            onChange={(event) => setAboutMe(event.target.value)}
-            placeholder="Training background, goals, constraints, and context"
-            className="min-h-32 resize-y bg-background"
-          />
-        ) : (
-          <div className="min-h-32 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs">
-            {hasAboutMe ? (
-              <div className="space-y-2 leading-6">
-                <MarkdownPreview content={aboutMe} />
-              </div>
-            ) : (
-              <p className="text-muted-foreground">No about me yet.</p>
-            )}
-          </div>
-        )}
-      </section>
+      <AboutMeEditor
+        key={userProfile?.updated_at ?? "empty-profile"}
+        initialAboutMe={userProfile?.about_me ?? ""}
+        isLoading={isUserProfileLoading}
+        updateUserProfile={updateUserProfile}
+      />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="min-w-0 space-y-3">
@@ -838,19 +999,30 @@ export function ProfileManager() {
                     {qualityFormError ?? mutationError}
                   </p>
                 ) : null}
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="mt-3"
-                  disabled={isMutating}
-                >
-                  {editingQuality ? <PencilIcon /> : <PlusIcon />}
-                  {isMutating
-                    ? "Saving..."
-                    : editingQuality
-                      ? "Save Quality"
-                      : "Add Quality"}
-                </Button>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button type="submit" size="sm" disabled={isMutating}>
+                    {editingQuality ? <PencilIcon /> : <PlusIcon />}
+                    {isMutating
+                      ? "Saving..."
+                      : editingQuality
+                        ? "Save Quality"
+                        : "Add Quality"}
+                  </Button>
+                  {editingQuality ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={isMutating}
+                      onClick={() => {
+                        void handleRemoveQualityFromProfile()
+                      }}
+                    >
+                      <Trash2Icon />
+                      Remove from Profile
+                    </Button>
+                  ) : null}
+                </div>
               </form>
             ) : null}
 
@@ -862,13 +1034,13 @@ export function ProfileManager() {
               <p className="rounded-md border border-destructive/30 p-3 text-sm text-destructive">
                 {error}
               </p>
-            ) : qualities.length === 0 ? (
+            ) : qualityStates.length === 0 ? (
               <p className="rounded-md border border-border/70 p-3 text-sm text-muted-foreground">
                 No qualities yet.
               </p>
             ) : (
               <div className="space-y-2">
-                {qualities.map((quality) => (
+                {qualityStates.map((quality) => (
                   <article
                     key={quality.id}
                     role="button"
@@ -906,7 +1078,7 @@ export function ProfileManager() {
                         type="button"
                         draggable
                         className="mt-0.5 flex size-7 shrink-0 cursor-grab items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing"
-                        aria-label={`Reorder ${quality.name}`}
+                        aria-label={`Reorder ${quality.quality.name}`}
                         onClick={(event) => event.stopPropagation()}
                         onDragStart={(event) =>
                           handleQualityDragStart(event, quality.id)
@@ -922,7 +1094,7 @@ export function ProfileManager() {
                       <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="truncate font-medium text-foreground">
-                            {quality.name}
+                            {quality.quality.name}
                           </p>
                           <p className="mt-1 text-sm text-muted-foreground">
                             {quality.training_frequency_target ??

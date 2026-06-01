@@ -17,7 +17,12 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 
 import { TaxonomyMultiSelect } from "./tag-multi-select"
-import type { ExerciseFormValues, ExerciseTaxonomyItem } from "./types"
+import type {
+  ExerciseFormValues,
+  ExercisePickerItem,
+  ExerciseQualityItem,
+  ExerciseTaxonomyItem,
+} from "./types"
 import { getVideoThumbnailUrl } from "./utils"
 
 /* eslint-disable @next/next/no-img-element -- Exercise media uses user-provided external URLs that are not known at build time. */
@@ -30,15 +35,15 @@ type ExerciseFormSheetProps = {
   formValues: ExerciseFormValues
   formError: string | null
   exerciseTypes: ExerciseTaxonomyItem[]
-  bodyRegions: ExerciseTaxonomyItem[]
+  qualities: ExerciseQualityItem[]
   onOpenChange: (open: boolean) => void
   onFieldChange: <K extends keyof ExerciseFormValues>(
     field: K,
     value: ExerciseFormValues[K]
   ) => void
   onUpdateTaxonomyItem: (
-    kind: "type" | "body_region",
-    item: ExerciseTaxonomyItem,
+    kind: "type",
+    item: ExercisePickerItem,
     values: { name: string; display_color: string | null }
   ) => Promise<{ error?: string }>
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
@@ -52,7 +57,7 @@ export function ExerciseFormSheet({
   formValues,
   formError,
   exerciseTypes,
-  bodyRegions,
+  qualities,
   onOpenChange,
   onFieldChange,
   onUpdateTaxonomyItem,
@@ -171,7 +176,7 @@ export function ExerciseFormSheet({
             </div>
 
             <div className="space-y-2">
-              <Label>Types</Label>
+              <Label>Exercise Type(s)</Label>
               <TaxonomyMultiSelect
                 label="Exercise Types"
                 createLabel="Create type"
@@ -186,18 +191,15 @@ export function ExerciseFormSheet({
             </div>
 
             <div className="space-y-2">
-              <Label>Body Regions</Label>
+              <Label>Trained Qualities</Label>
               <TaxonomyMultiSelect
-                label="Body Regions"
-                createLabel="Create Body Region"
-                emptyLabel="Select Body Regions"
-                options={bodyRegions}
-                values={formValues.bodyRegions}
-                onChange={(nextBodyRegions) =>
-                  onFieldChange("bodyRegions", nextBodyRegions)
-                }
-                onUpdateItem={(item, values) =>
-                  onUpdateTaxonomyItem("body_region", item, values)
+                label="Trained Qualities"
+                createLabel="Create quality"
+                emptyLabel="Select trained qualities"
+                options={qualities}
+                values={formValues.qualities}
+                onChange={(nextQualities) =>
+                  onFieldChange("qualities", nextQualities)
                 }
               />
             </div>

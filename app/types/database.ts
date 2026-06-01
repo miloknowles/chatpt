@@ -114,6 +114,35 @@ export interface Database {
           },
         ]
       }
+      user_profiles: {
+        Row: {
+          user_id: string
+          about_me: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          about_me?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          about_me?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_issues: {
         Row: {
           id: string
@@ -217,11 +246,9 @@ export interface Database {
           user_id: string
           name: string
           notes: string | null
-          body_region: string | null
-          status: UserQualityStatus
+          body_region_id: string | null
+          display_color: string | null
           sort_key: string | null
-          training_frequency_target: string | null
-          training_goal: string | null
           created_at: string
           updated_at: string
         }
@@ -230,11 +257,9 @@ export interface Database {
           user_id: string
           name: string
           notes?: string | null
-          body_region?: string | null
-          status: UserQualityStatus
+          body_region_id?: string | null
+          display_color?: string | null
           sort_key?: string | null
-          training_frequency_target?: string | null
-          training_goal?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -243,11 +268,9 @@ export interface Database {
           user_id?: string
           name?: string
           notes?: string | null
-          body_region?: string | null
-          status?: UserQualityStatus
+          body_region_id?: string | null
+          display_color?: string | null
           sort_key?: string | null
-          training_frequency_target?: string | null
-          training_goal?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -258,6 +281,64 @@ export interface Database {
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_qualities_user_id_body_region_id_fkey"
+            columns: ["user_id", "body_region_id"]
+            isOneToOne: false
+            referencedRelation: "user_body_regions"
+            referencedColumns: ["user_id", "id"]
+          },
+        ]
+      }
+      user_quality_states: {
+        Row: {
+          id: string
+          user_id: string
+          quality_id: string
+          status: UserQualityStatus
+          training_frequency_target: string | null
+          notes: string | null
+          sort_key: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          quality_id: string
+          status: UserQualityStatus
+          training_frequency_target?: string | null
+          notes?: string | null
+          sort_key?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          quality_id?: string
+          status?: UserQualityStatus
+          training_frequency_target?: string | null
+          notes?: string | null
+          sort_key?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_quality_states_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_quality_states_user_id_quality_id_fkey"
+            columns: ["user_id", "quality_id"]
+            isOneToOne: false
+            referencedRelation: "user_qualities"
+            referencedColumns: ["user_id", "id"]
           },
         ]
       }
@@ -353,7 +434,7 @@ export interface Database {
           },
         ]
       }
-      user_exercise_body_regions: {
+      user_body_regions: {
         Row: {
           id: string
           user_id: string
@@ -389,7 +470,7 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: "user_exercise_body_regions_user_id_fkey"
+            foreignKeyName: "user_body_regions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -445,31 +526,31 @@ export interface Database {
           },
         ]
       }
-      user_exercise_body_region_assignments: {
+      user_exercise_quality_assignments: {
         Row: {
           user_id: string
           exercise_id: string
-          body_region_id: string
+          quality_id: string
           created_at: string
           updated_at: string
         }
         Insert: {
           user_id: string
           exercise_id: string
-          body_region_id: string
+          quality_id: string
           created_at?: string
           updated_at?: string
         }
         Update: {
           user_id?: string
           exercise_id?: string
-          body_region_id?: string
+          quality_id?: string
           created_at?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "user_exercise_body_region_assignments_user_id_fkey"
+            foreignKeyName: "user_exercise_quality_assignments_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -477,7 +558,7 @@ export interface Database {
           },
           {
             foreignKeyName:
-              "user_exercise_body_region_assignments_user_id_exercise_id_fkey"
+              "user_exercise_quality_assignments_user_id_exercise_id_fkey"
             columns: ["user_id", "exercise_id"]
             isOneToOne: false
             referencedRelation: "user_exercises"
@@ -485,10 +566,10 @@ export interface Database {
           },
           {
             foreignKeyName:
-              "user_exercise_body_region_assignments_user_id_body_region_id_fkey"
-            columns: ["user_id", "body_region_id"]
+              "user_exercise_quality_assignments_user_id_quality_id_fkey"
+            columns: ["user_id", "quality_id"]
             isOneToOne: false
-            referencedRelation: "user_exercise_body_regions"
+            referencedRelation: "user_qualities"
             referencedColumns: ["user_id", "id"]
           },
         ]
@@ -770,6 +851,10 @@ export type UserMessage = TableRow<"user_messages">
 export type UserMessageInsert = TableInsert<"user_messages">
 export type UserMessageUpdate = TableUpdate<"user_messages">
 
+export type UserProfile = TableRow<"user_profiles">
+export type UserProfileInsert = TableInsert<"user_profiles">
+export type UserProfileUpdate = TableUpdate<"user_profiles">
+
 export type UserIssue = TableRow<"user_issues">
 export type UserIssueInsert = TableInsert<"user_issues">
 export type UserIssueUpdate = TableUpdate<"user_issues">
@@ -782,6 +867,10 @@ export type UserQuality = TableRow<"user_qualities">
 export type UserQualityInsert = TableInsert<"user_qualities">
 export type UserQualityUpdate = TableUpdate<"user_qualities">
 
+export type UserQualityState = TableRow<"user_quality_states">
+export type UserQualityStateInsert = TableInsert<"user_quality_states">
+export type UserQualityStateUpdate = TableUpdate<"user_quality_states">
+
 export type UserIssueQualityRelationship =
   TableRow<"user_issue_quality_relationships">
 export type UserIssueQualityRelationshipInsert =
@@ -793,11 +882,9 @@ export type UserExerciseType = TableRow<"user_exercise_types">
 export type UserExerciseTypeInsert = TableInsert<"user_exercise_types">
 export type UserExerciseTypeUpdate = TableUpdate<"user_exercise_types">
 
-export type UserExerciseBodyRegion = TableRow<"user_exercise_body_regions">
-export type UserExerciseBodyRegionInsert =
-  TableInsert<"user_exercise_body_regions">
-export type UserExerciseBodyRegionUpdate =
-  TableUpdate<"user_exercise_body_regions">
+export type UserBodyRegion = TableRow<"user_body_regions">
+export type UserBodyRegionInsert = TableInsert<"user_body_regions">
+export type UserBodyRegionUpdate = TableUpdate<"user_body_regions">
 
 export type UserExerciseTypeAssignment =
   TableRow<"user_exercise_type_assignments">
@@ -806,12 +893,12 @@ export type UserExerciseTypeAssignmentInsert =
 export type UserExerciseTypeAssignmentUpdate =
   TableUpdate<"user_exercise_type_assignments">
 
-export type UserExerciseBodyRegionAssignment =
-  TableRow<"user_exercise_body_region_assignments">
-export type UserExerciseBodyRegionAssignmentInsert =
-  TableInsert<"user_exercise_body_region_assignments">
-export type UserExerciseBodyRegionAssignmentUpdate =
-  TableUpdate<"user_exercise_body_region_assignments">
+export type UserExerciseQualityAssignment =
+  TableRow<"user_exercise_quality_assignments">
+export type UserExerciseQualityAssignmentInsert =
+  TableInsert<"user_exercise_quality_assignments">
+export type UserExerciseQualityAssignmentUpdate =
+  TableUpdate<"user_exercise_quality_assignments">
 
 export type UserExercise = TableRow<"user_exercises">
 export type UserExerciseInsert = TableInsert<"user_exercises">

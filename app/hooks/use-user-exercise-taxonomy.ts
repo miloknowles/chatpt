@@ -116,6 +116,9 @@ export function useUserExerciseTaxonomy() {
       bodyRegions: bodyRegionsQuery.data ?? [],
       isLoading:
         isAuthLoading ||
+        exerciseTypesQuery.isLoading ||
+        bodyRegionsQuery.isLoading,
+      isRefreshing:
         exerciseTypesQuery.isFetching ||
         bodyRegionsQuery.isFetching,
       isMutating:
@@ -140,6 +143,7 @@ export function useUserExerciseTaxonomy() {
       bodyRegionsQuery.data,
       bodyRegionsQuery.error,
       bodyRegionsQuery.isFetching,
+      bodyRegionsQuery.isLoading,
       createTaxonomyItem,
       createTaxonomyItemState.error,
       createTaxonomyItemState.isLoading,
@@ -149,6 +153,7 @@ export function useUserExerciseTaxonomy() {
       exerciseTypesQuery.data,
       exerciseTypesQuery.error,
       exerciseTypesQuery.isFetching,
+      exerciseTypesQuery.isLoading,
       isAuthLoading,
       reorderTaxonomyItem,
       updateTaxonomyItem,

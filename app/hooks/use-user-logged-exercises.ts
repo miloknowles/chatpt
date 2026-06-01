@@ -7,7 +7,9 @@ import { useAuth } from "@/components/auth-provider"
 import {
   useCreateLoggedExerciseMutation,
   useGetLoggedExercisesQuery,
+  useUpdateLoggedExerciseMutation,
   type LoggedExerciseCreatePayload,
+  type LoggedExerciseUpdatePayload,
 } from "@/lib/redux/training-api"
 import type { UserLoggedExercise } from "@/types/database"
 
@@ -29,6 +31,8 @@ export function useUserLoggedExercises(sessionId: string | null | undefined) {
   const loggedExercisesQuery = useGetLoggedExercisesQuery(queryArgs)
   const [createLoggedExerciseMutation, createLoggedExerciseState] =
     useCreateLoggedExerciseMutation()
+  const [updateLoggedExerciseMutation, updateLoggedExerciseState] =
+    useUpdateLoggedExerciseMutation()
 
   const createLoggedExercise = useCallback(
     async (
@@ -51,14 +55,43 @@ export function useUserLoggedExercises(sessionId: string | null | undefined) {
     [createLoggedExerciseMutation, user]
   )
 
+  const updateLoggedExercise = useCallback(
+    async (
+      loggedExerciseId: string,
+      payload: LoggedExerciseUpdatePayload
+    ): HookActionResult => {
+      if (!user || !sessionId) {
+        return { error: "You must be signed in." }
+      }
+
+      try {
+        await updateLoggedExerciseMutation({
+          userId: user.id,
+          sessionId,
+          loggedExerciseId,
+          payload,
+        }).unwrap()
+        return {}
+      } catch (error) {
+        return { error: getThrownErrorMessage(error) }
+      }
+    },
+    [sessionId, updateLoggedExerciseMutation, user]
+  )
+
   return useMemo(
     () => ({
       loggedExercises: loggedExercisesQuery.data ?? [],
       isLoading: isAuthLoading || loggedExercisesQuery.isFetching,
-      isMutating: createLoggedExerciseState.isLoading,
+      isMutating:
+        createLoggedExerciseState.isLoading ||
+        updateLoggedExerciseState.isLoading,
       error: getRtkErrorMessage(loggedExercisesQuery.error),
-      mutationError: getRtkErrorMessage(createLoggedExerciseState.error),
+      mutationError:
+        getRtkErrorMessage(createLoggedExerciseState.error) ??
+        getRtkErrorMessage(updateLoggedExerciseState.error),
       createLoggedExercise,
+      updateLoggedExercise,
     }),
     [
       createLoggedExercise,
@@ -68,6 +101,9 @@ export function useUserLoggedExercises(sessionId: string | null | undefined) {
       loggedExercisesQuery.data,
       loggedExercisesQuery.error,
       loggedExercisesQuery.isFetching,
+      updateLoggedExercise,
+      updateLoggedExerciseState.error,
+      updateLoggedExerciseState.isLoading,
     ]
   )
 }

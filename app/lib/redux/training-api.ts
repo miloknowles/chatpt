@@ -7,13 +7,15 @@ import { createClient } from "@/lib/supabase/client"
 import type {
   Json,
   UserConversation,
+  UserBodyRegion,
   UserExercise,
-  UserExerciseBodyRegion,
   UserExerciseType,
   UserIssue,
   UserLoggedExercise,
   UserMessage,
+  UserProfile,
   UserQuality,
+  UserQualityState,
   UserSession,
   UserSuperset,
 } from "@/types/database"
@@ -32,7 +34,7 @@ export type ExercisePayload = {
   video_url: string | null
   performance: Json | null
   types: ExerciseTaxonomyPayload
-  body_regions: ExerciseTaxonomyPayload
+  qualities: ExerciseTaxonomyPayload
 }
 
 export type ExerciseTaxonomyUpdatePayload = {
@@ -94,6 +96,8 @@ export type ExercisesQueryArgs = {
   page: number
   pageSize: number
   searchQuery: string
+  typeIds: string[]
+  qualityIds: string[]
 }
 
 export type ExercisesResult = {
@@ -103,7 +107,7 @@ export type ExercisesResult = {
 
 export type UserExerciseWithTaxonomy = UserExercise & {
   types: UserExerciseType[]
-  body_regions: UserExerciseBodyRegion[]
+  qualities: UserQuality[]
 }
 
 export type IssuePayload = {
@@ -116,11 +120,28 @@ export type IssuePayload = {
 export type QualityPayload = {
   name: string
   notes: string | null
-  body_region: string | null
-  status: UserQuality["status"]
+  body_region_id: string | null
+  display_color: string | null
   sort_key?: string | null
+}
+
+export type UserQualityStateWithQuality = UserQualityState & {
+  quality: UserQuality
+}
+
+export type QualityStateCreatePayload = {
+  quality_id?: string | null
+  name: string
+  status: UserQualityState["status"]
   training_frequency_target: string | null
-  training_goal: string | null
+  notes: string | null
+  sort_key?: string | null
+}
+
+export type QualityStatePayload = {
+  status: UserQualityState["status"]
+  training_frequency_target: string | null
+  notes: string | null
 }
 
 export type ProfileSortKeyPayload = {
@@ -151,6 +172,8 @@ export type SupersetUpdatePayload = {
 export type UserLoggedExerciseWithExercise = UserLoggedExercise & {
   exercise_name: string
   exercise_notes: string | null
+  exercise_image_url: string | null
+  exercise_video_url: string | null
 }
 
 export type LoggedExerciseCreatePayload = {
@@ -158,6 +181,10 @@ export type LoggedExerciseCreatePayload = {
   exerciseId: string
   supersetId: string | null
   sortKey: string
+}
+
+export type LoggedExerciseUpdatePayload = {
+  sort_key?: string
 }
 
 export type ConversationCreatePayload = {
@@ -173,6 +200,10 @@ export type TouchConversationPayload = {
 export type ConversationUpdatePayload = {
   title?: string
   status?: UserConversation["status"]
+}
+
+export type UserProfilePayload = {
+  about_me: string
 }
 
 function getErrorMessage(error: { message: string } | null) {
@@ -230,7 +261,7 @@ async function ensureTaxonomyItems({
 }: {
   supabase: ReturnType<typeof createClient>
   userId: string
-  table: "user_exercise_types" | "user_exercise_body_regions"
+  table: "user_exercise_types" | "user_body_regions"
   existingIds: string[]
   customNames: string[]
 }) {
@@ -305,6 +336,91 @@ async function ensureTaxonomyItems({
   }
 }
 
+async function ensureQualityItems({
+  supabase,
+  userId,
+  existingIds,
+  customNames,
+}: {
+  supabase: ReturnType<typeof createClient>
+  userId: string
+  existingIds: string[]
+  customNames: string[]
+}) {
+  const normalizedExistingIds = uniqueStrings(existingIds)
+  const normalizedNames = uniqueStrings(customNames)
+
+  if (normalizedNames.length === 0) {
+    return { ids: normalizedExistingIds, error: null }
+  }
+
+  const { data: existingRows, error: existingError } = await supabase
+    .from("user_qualities")
+    .select("id,name")
+    .eq("user_id", userId)
+    .in("name", normalizedNames)
+
+  if (existingError) {
+    return { ids: [], error: getErrorMessage(existingError) }
+  }
+
+  const existingIdsByName = new Map(
+    (existingRows ?? []).map((row) => [row.name.toLowerCase(), row.id])
+  )
+  const missingNames = normalizedNames.filter(
+    (name) => !existingIdsByName.has(name.toLowerCase())
+  )
+
+  let createdIds: string[] = []
+  if (missingNames.length > 0) {
+    const { data: qualityRows, error: qualityRowsError } = await supabase
+      .from("user_qualities")
+      .select("sort_key")
+      .eq("user_id", userId)
+      .order("sort_key", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true })
+
+    if (qualityRowsError) {
+      return { ids: [], error: getErrorMessage(qualityRowsError) }
+    }
+
+    const sortKeys = generateNKeysBetween(
+      getLastValidSortKey(qualityRows ?? []),
+      null,
+      missingNames.length
+    )
+    const { data: createdRows, error: createdError } = await supabase
+      .from("user_qualities")
+      .insert(
+        missingNames.map((name, index) => ({
+          user_id: userId,
+          name,
+          body_region_id: null,
+          display_color: null,
+          sort_key: sortKeys[index],
+        }))
+      )
+      .select("id")
+
+    if (createdError) {
+      return { ids: [], error: getErrorMessage(createdError) }
+    }
+
+    createdIds = (createdRows ?? []).map((row) => row.id)
+  }
+
+  return {
+    ids: Array.from(
+      new Set([
+        ...normalizedExistingIds,
+        ...Array.from(existingIdsByName.values()),
+        ...createdIds,
+      ])
+    ),
+    error: null,
+  }
+}
+
 async function replaceAssignments({
   supabase,
   userId,
@@ -318,8 +434,8 @@ async function replaceAssignments({
   exerciseId: string
   table:
     | "user_exercise_type_assignments"
-    | "user_exercise_body_region_assignments"
-  idColumn: "type_id" | "body_region_id"
+    | "user_exercise_quality_assignments"
+  idColumn: "type_id" | "quality_id"
   ids: string[]
 }) {
   const { error: deleteError } = await supabase
@@ -346,11 +462,11 @@ async function replaceAssignments({
             type_id: id,
           }))
         )
-      : await supabase.from("user_exercise_body_region_assignments").insert(
+      : await supabase.from("user_exercise_quality_assignments").insert(
           uniqueIds.map((id) => ({
             user_id: userId,
             exercise_id: exerciseId,
-            body_region_id: id,
+            quality_id: id,
           }))
         )
 
@@ -379,17 +495,6 @@ async function saveExerciseAssignments({
     return typeResult.error
   }
 
-  const bodyRegionResult = await ensureTaxonomyItems({
-    supabase,
-    userId,
-    table: "user_exercise_body_regions",
-    existingIds: payload.body_regions.existingIds,
-    customNames: payload.body_regions.customNames,
-  })
-  if (bodyRegionResult.error) {
-    return bodyRegionResult.error
-  }
-
   const typeAssignmentError = await replaceAssignments({
     supabase,
     userId,
@@ -402,13 +507,23 @@ async function saveExerciseAssignments({
     return typeAssignmentError
   }
 
+  const qualityResult = await ensureQualityItems({
+    supabase,
+    userId,
+    existingIds: payload.qualities.existingIds,
+    customNames: payload.qualities.customNames,
+  })
+  if (qualityResult.error) {
+    return qualityResult.error
+  }
+
   return replaceAssignments({
     supabase,
     userId,
     exerciseId,
-    table: "user_exercise_body_region_assignments",
-    idColumn: "body_region_id",
-    ids: bodyRegionResult.ids,
+    table: "user_exercise_quality_assignments",
+    idColumn: "quality_id",
+    ids: qualityResult.ids,
   })
 }
 
@@ -419,8 +534,10 @@ function listTag(type: TrainingTagType) {
 type TrainingTagType =
   | "Exercises"
   | "ExerciseTaxonomy"
+  | "UserProfile"
   | "Issues"
   | "Qualities"
+  | "QualityStates"
   | "Sessions"
   | "Supersets"
   | "LoggedExercises"
@@ -433,8 +550,10 @@ export const trainingApi = createApi({
   tagTypes: [
     "Exercises",
     "ExerciseTaxonomy",
+    "UserProfile",
     "Issues",
     "Qualities",
+    "QualityStates",
     "Sessions",
     "Supersets",
     "LoggedExercises",
@@ -442,18 +561,125 @@ export const trainingApi = createApi({
     "Messages",
   ],
   endpoints: (builder) => ({
+    getUserProfile: builder.query<UserProfile | null, { userId: string }>({
+      async queryFn({ userId }) {
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from("user_profiles")
+          .select("*")
+          .eq("user_id", userId)
+          .maybeSingle()
+
+        if (error) {
+          return { error: getErrorMessage(error) }
+        }
+
+        return { data: data ?? null }
+      },
+      providesTags: [listTag("UserProfile")],
+    }),
+    upsertUserProfile: builder.mutation<
+      UserProfile,
+      { userId: string; payload: UserProfilePayload }
+    >({
+      async queryFn({ userId, payload }) {
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from("user_profiles")
+          .upsert(
+            {
+              user_id: userId,
+              about_me: payload.about_me,
+            },
+            { onConflict: "user_id" }
+          )
+          .select("*")
+          .single()
+
+        if (error) {
+          return { error: getErrorMessage(error) }
+        }
+
+        return { data }
+      },
+      invalidatesTags: [listTag("UserProfile")],
+    }),
     getExercises: builder.query<ExercisesResult, ExercisesQueryArgs>({
-      async queryFn({ userId, page, pageSize, searchQuery }) {
+      async queryFn({
+        userId,
+        page,
+        pageSize,
+        searchQuery,
+        typeIds,
+        qualityIds,
+      }) {
         const supabase = createClient()
         const normalizedSearchQuery = searchQuery.trim()
+        const normalizedTypeIds = uniqueStrings(typeIds)
+        const normalizedQualityIds = uniqueStrings(qualityIds)
         const normalizedPage = Math.max(1, page)
         const start = (normalizedPage - 1) * pageSize
         const end = start + pageSize - 1
+        let filteredExerciseIds: Set<string> | null = null
+
+        if (normalizedTypeIds.length > 0) {
+          const { data: typeAssignments, error: typeAssignmentsError } =
+            await supabase
+              .from("user_exercise_type_assignments")
+              .select("exercise_id")
+              .eq("user_id", userId)
+              .in("type_id", normalizedTypeIds)
+
+          if (typeAssignmentsError) {
+            return { error: getErrorMessage(typeAssignmentsError) }
+          }
+
+          filteredExerciseIds = new Set(
+            (typeAssignments ?? []).map((assignment) => assignment.exercise_id)
+          )
+        }
+
+        if (normalizedQualityIds.length > 0) {
+          const { data: qualityAssignments, error: qualityAssignmentsError } =
+            await supabase
+            .from("user_exercise_quality_assignments")
+            .select("exercise_id")
+            .eq("user_id", userId)
+            .in("quality_id", normalizedQualityIds)
+
+          if (qualityAssignmentsError) {
+            return { error: getErrorMessage(qualityAssignmentsError) }
+          }
+
+          const qualityExerciseIds = new Set(
+            (qualityAssignments ?? []).map((assignment) => assignment.exercise_id)
+          )
+          filteredExerciseIds = filteredExerciseIds
+            ? new Set(
+                Array.from(filteredExerciseIds).filter((exerciseId) =>
+                  qualityExerciseIds.has(exerciseId)
+                )
+              )
+            : qualityExerciseIds
+        }
+
+        if (filteredExerciseIds && filteredExerciseIds.size === 0) {
+          return {
+            data: {
+              exercises: [],
+              totalCount: 0,
+            },
+          }
+        }
 
         let query = supabase
           .from("user_exercises")
           .select("*", { count: "exact" })
           .eq("user_id", userId)
+
+        if (filteredExerciseIds) {
+          query = query.in("id", Array.from(filteredExerciseIds))
+        }
 
         if (normalizedSearchQuery) {
           const wildcardQuery = `%${normalizedSearchQuery}%`
@@ -473,10 +699,7 @@ export const trainingApi = createApi({
         const exerciseRows = data ?? []
         const exerciseIds = exerciseRows.map((exercise) => exercise.id)
         const typeRowsByExerciseId = new Map<string, UserExerciseType[]>()
-        const bodyRegionRowsByExerciseId = new Map<
-          string,
-          UserExerciseBodyRegion[]
-        >()
+        const qualityRowsByExerciseId = new Map<string, UserQuality[]>()
 
         if (exerciseIds.length > 0) {
           const { data: typeAssignments, error: typeAssignmentsError } =
@@ -503,31 +726,28 @@ export const trainingApi = createApi({
             typeRowsByExerciseId.set(assignment.exercise_id, rows)
           }
 
-          const {
-            data: bodyRegionAssignments,
-            error: bodyRegionAssignmentsError,
-          } = await supabase
-            .from("user_exercise_body_region_assignments")
-            .select("exercise_id,body_region:user_exercise_body_regions(*)")
+          const { data: qualityAssignments, error: qualityAssignmentsError } =
+            await supabase
+            .from("user_exercise_quality_assignments")
+            .select("exercise_id,quality:user_qualities(*)")
             .eq("user_id", userId)
             .in("exercise_id", exerciseIds)
 
-          if (bodyRegionAssignmentsError) {
-            return { error: getErrorMessage(bodyRegionAssignmentsError) }
+          if (qualityAssignmentsError) {
+            return { error: getErrorMessage(qualityAssignmentsError) }
           }
 
-          for (const assignment of (bodyRegionAssignments ?? []) as {
+          for (const assignment of (qualityAssignments ?? []) as {
             exercise_id: string
-            body_region: UserExerciseBodyRegion | null
+            quality: UserQuality | null
           }[]) {
-            if (!assignment.body_region) {
+            if (!assignment.quality) {
               continue
             }
 
-            const rows =
-              bodyRegionRowsByExerciseId.get(assignment.exercise_id) ?? []
-            rows.push(assignment.body_region)
-            bodyRegionRowsByExerciseId.set(assignment.exercise_id, rows)
+            const rows = qualityRowsByExerciseId.get(assignment.exercise_id) ?? []
+            rows.push(assignment.quality)
+            qualityRowsByExerciseId.set(assignment.exercise_id, rows)
           }
         }
 
@@ -536,7 +756,7 @@ export const trainingApi = createApi({
             exercises: exerciseRows.map((exercise) => ({
               ...exercise,
               types: typeRowsByExerciseId.get(exercise.id) ?? [],
-              body_regions: bodyRegionRowsByExerciseId.get(exercise.id) ?? [],
+              qualities: qualityRowsByExerciseId.get(exercise.id) ?? [],
             })),
             totalCount: count ?? 0,
           },
@@ -569,13 +789,13 @@ export const trainingApi = createApi({
       providesTags: [listTag("ExerciseTaxonomy")],
     }),
     getExerciseBodyRegions: builder.query<
-      UserExerciseBodyRegion[],
+      UserBodyRegion[],
       { userId: string }
     >({
       async queryFn({ userId }) {
         const supabase = createClient()
         const { data, error } = await supabase
-          .from("user_exercise_body_regions")
+          .from("user_body_regions")
           .select("*")
           .eq("user_id", userId)
           .order("sort_key", { ascending: true })
@@ -590,7 +810,7 @@ export const trainingApi = createApi({
       providesTags: [listTag("ExerciseTaxonomy")],
     }),
     updateExerciseTaxonomyItem: builder.mutation<
-      UserExerciseType | UserExerciseBodyRegion,
+      UserExerciseType | UserBodyRegion,
       { userId: string; payload: ExerciseTaxonomyUpdatePayload }
     >({
       async queryFn({ userId, payload }) {
@@ -608,7 +828,7 @@ export const trainingApi = createApi({
         const table =
           payload.kind === "type"
             ? "user_exercise_types"
-            : "user_exercise_body_regions"
+            : "user_body_regions"
         const { data, error } = await supabase
           .from(table)
           .update(updatePayload)
@@ -636,10 +856,6 @@ export const trainingApi = createApi({
                 getState(),
                 "getExerciseBodyRegions"
               )
-        const exerciseArgs = trainingApi.util.selectCachedArgsForQuery(
-          getState(),
-          "getExercises"
-        )
         const patches = [
           ...taxonomyArgs.map((args) =>
             dispatch(
@@ -676,16 +892,17 @@ export const trainingApi = createApi({
                   )
             )
           ),
-          ...exerciseArgs.map((args) =>
+          ...(payload.kind === "type"
+            ? trainingApi.util.selectCachedArgsForQuery(
+                getState(),
+                "getExercises"
+              )
+            : []
+          ).map((args) =>
             dispatch(
               trainingApi.util.updateQueryData("getExercises", args, (draft) => {
                 for (const exercise of draft.exercises) {
-                  const entries =
-                    payload.kind === "type"
-                      ? exercise.types
-                      : exercise.body_regions
-
-                  for (const entry of entries) {
+                  for (const entry of exercise.types) {
                     if (entry.id === payload.itemId) {
                       entry.name = trimmedName
                       entry.description = payload.description
@@ -710,7 +927,7 @@ export const trainingApi = createApi({
       invalidatesTags: [listTag("Exercises"), listTag("ExerciseTaxonomy")],
     }),
     createExerciseTaxonomyItem: builder.mutation<
-      UserExerciseType | UserExerciseBodyRegion,
+      UserExerciseType | UserBodyRegion,
       { userId: string; payload: ExerciseTaxonomyCreatePayload }
     >({
       async queryFn({ userId, payload }) {
@@ -724,7 +941,7 @@ export const trainingApi = createApi({
         const table =
           payload.kind === "type"
             ? "user_exercise_types"
-            : "user_exercise_body_regions"
+            : "user_body_regions"
         const { data, error } = await supabase
           .from(table)
           .insert({
@@ -754,7 +971,7 @@ export const trainingApi = createApi({
         const table =
           payload.kind === "type"
             ? "user_exercise_types"
-            : "user_exercise_body_regions"
+            : "user_body_regions"
         const { error } = await supabase
           .from(table)
           .update({ sort_key: payload.sort_key })
@@ -778,7 +995,7 @@ export const trainingApi = createApi({
         const table =
           payload.kind === "type"
             ? "user_exercise_types"
-            : "user_exercise_body_regions"
+            : "user_body_regions"
         const { error } = await supabase
           .from(table)
           .delete()
@@ -826,7 +1043,7 @@ export const trainingApi = createApi({
           return { error: assignmentError }
         }
 
-        return { data: { ...data, types: [], body_regions: [] } }
+        return { data: { ...data, types: [], qualities: [] } }
       },
       invalidatesTags: [listTag("Exercises"), listTag("ExerciseTaxonomy")],
     }),
@@ -1164,7 +1381,7 @@ export const trainingApi = createApi({
 
         return { data }
       },
-      invalidatesTags: [listTag("Qualities")],
+      invalidatesTags: [listTag("Qualities"), listTag("Exercises")],
     }),
     updateQuality: builder.mutation<
       null,
@@ -1184,8 +1401,90 @@ export const trainingApi = createApi({
 
         return { data: null }
       },
+      async onQueryStarted(
+        { qualityId, payload },
+        { dispatch, getState, queryFulfilled }
+      ) {
+        const optimisticUpdatedAt = new Date().toISOString()
+        const patchQuality = (quality: UserQuality) => {
+          quality.name = payload.name
+          quality.notes = payload.notes
+          quality.body_region_id = payload.body_region_id
+          quality.display_color = payload.display_color
+          if (payload.sort_key !== undefined) {
+            quality.sort_key = payload.sort_key
+          }
+          quality.updated_at = optimisticUpdatedAt
+        }
+        const patches = [
+          ...trainingApi.util
+            .selectCachedArgsForQuery(getState(), "getQualities")
+            .map((args) =>
+              dispatch(
+                trainingApi.util.updateQueryData(
+                  "getQualities",
+                  args,
+                  (draft) => {
+                    const quality = draft.find(
+                      (entry) => entry.id === qualityId
+                    )
+                    if (quality) {
+                      patchQuality(quality)
+                    }
+                  }
+                )
+              )
+            ),
+          ...trainingApi.util
+            .selectCachedArgsForQuery(getState(), "getExercises")
+            .map((args) =>
+              dispatch(
+                trainingApi.util.updateQueryData(
+                  "getExercises",
+                  args,
+                  (draft) => {
+                    for (const exercise of draft.exercises) {
+                      for (const quality of exercise.qualities) {
+                        if (quality.id === qualityId) {
+                          patchQuality(quality)
+                        }
+                      }
+                    }
+                  }
+                )
+              )
+            ),
+          ...trainingApi.util
+            .selectCachedArgsForQuery(getState(), "getQualityStates")
+            .map((args) =>
+              dispatch(
+                trainingApi.util.updateQueryData(
+                  "getQualityStates",
+                  args,
+                  (draft) => {
+                    for (const state of draft) {
+                      if (state.quality.id === qualityId) {
+                        patchQuality(state.quality)
+                      }
+                    }
+                  }
+                )
+              )
+            ),
+        ]
+
+        try {
+          await queryFulfilled
+        } catch {
+          for (const patch of patches) {
+            patch.undo()
+          }
+        }
+      },
       invalidatesTags: (_result, _error, { qualityId }) => [
         listTag("Qualities"),
+        listTag("Exercises"),
+        listTag("QualityStates"),
         { type: "Qualities", id: qualityId },
       ],
     }),
@@ -1210,6 +1509,253 @@ export const trainingApi = createApi({
       invalidatesTags: (_result, _error, { qualityId }) => [
         listTag("Qualities"),
         { type: "Qualities", id: qualityId },
+        listTag("Exercises"),
+      ],
+    }),
+    deleteQuality: builder.mutation<
+      null,
+      { userId: string; qualityId: string }
+    >({
+      async queryFn({ userId, qualityId }) {
+        const supabase = createClient()
+        const { error } = await supabase
+          .from("user_qualities")
+          .delete()
+          .eq("id", qualityId)
+          .eq("user_id", userId)
+
+        if (error) {
+          return { error: getErrorMessage(error) }
+        }
+
+        return { data: null }
+      },
+      invalidatesTags: (_result, _error, { qualityId }) => [
+        listTag("Qualities"),
+        { type: "Qualities", id: qualityId },
+        listTag("Exercises"),
+        listTag("QualityStates"),
+      ],
+    }),
+    getQualityStates: builder.query<
+      UserQualityStateWithQuality[],
+      { userId: string }
+    >({
+      async queryFn({ userId }) {
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from("user_quality_states")
+          .select("*, quality:user_qualities(*)")
+          .eq("user_id", userId)
+          .order("sort_key", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: true })
+
+        if (error) {
+          return { error: getErrorMessage(error) }
+        }
+
+        const states = ((data ?? []) as (UserQualityState & {
+          quality: UserQuality | null
+        })[]).filter(
+          (state): state is UserQualityStateWithQuality =>
+            state.quality !== null
+        )
+
+        return { data: states }
+      },
+      providesTags: (result) => [
+        listTag("QualityStates"),
+        ...(result?.map((state) => ({
+          type: "QualityStates" as const,
+          id: state.id,
+        })) ?? []),
+      ],
+    }),
+    createQualityState: builder.mutation<
+      UserQualityStateWithQuality,
+      { userId: string; payload: QualityStateCreatePayload }
+    >({
+      async queryFn({ userId, payload }) {
+        const supabase = createClient()
+        const name = payload.name.trim()
+        let qualityId = payload.quality_id ?? null
+
+        if (!qualityId) {
+          const { data: existingQualities, error: existingError } = await supabase
+            .from("user_qualities")
+            .select("id")
+            .eq("user_id", userId)
+            .ilike("name", name)
+            .limit(1)
+
+          if (existingError) {
+            return { error: getErrorMessage(existingError) }
+          }
+
+          qualityId = existingQualities?.[0]?.id ?? null
+        }
+
+        if (!qualityId) {
+          const { data: qualityRows, error: qualityRowsError } = await supabase
+            .from("user_qualities")
+            .select("sort_key")
+            .eq("user_id", userId)
+            .order("sort_key", { ascending: true, nullsFirst: false })
+            .order("created_at", { ascending: true })
+
+          if (qualityRowsError) {
+            return { error: getErrorMessage(qualityRowsError) }
+          }
+
+          const { data: createdQuality, error: createQualityError } =
+            await supabase
+              .from("user_qualities")
+              .insert({
+                user_id: userId,
+                name,
+                notes: null,
+                body_region_id: null,
+                display_color: null,
+                sort_key: generateKeyBetween(
+                  getLastValidSortKey(qualityRows ?? []),
+                  null
+                ),
+              })
+              .select("id")
+              .single()
+
+          if (createQualityError) {
+            return { error: getErrorMessage(createQualityError) }
+          }
+
+          qualityId = createdQuality.id
+        }
+
+        const { data: existingState, error: existingStateError } =
+          await supabase
+            .from("user_quality_states")
+            .select("id")
+            .eq("user_id", userId)
+            .eq("quality_id", qualityId)
+            .maybeSingle()
+
+        if (existingStateError) {
+          return { error: getErrorMessage(existingStateError) }
+        }
+
+        if (existingState) {
+          const { data, error } = await supabase
+            .from("user_quality_states")
+            .update({
+              status: payload.status,
+              training_frequency_target: payload.training_frequency_target,
+              notes: payload.notes,
+              sort_key: payload.sort_key ?? null,
+            })
+            .eq("id", existingState.id)
+            .eq("user_id", userId)
+            .select("*, quality:user_qualities(*)")
+            .single()
+
+          if (error) {
+            return { error: getErrorMessage(error) }
+          }
+
+          return { data: data as UserQualityStateWithQuality }
+        }
+
+        const { data, error } = await supabase
+          .from("user_quality_states")
+          .insert({
+            user_id: userId,
+            quality_id: qualityId,
+            status: payload.status,
+            training_frequency_target: payload.training_frequency_target,
+            notes: payload.notes,
+            sort_key: payload.sort_key ?? null,
+          })
+          .select("*, quality:user_qualities(*)")
+          .single()
+
+        if (error) {
+          return { error: getErrorMessage(error) }
+        }
+
+        return { data: data as UserQualityStateWithQuality }
+      },
+      invalidatesTags: [
+        listTag("QualityStates"),
+        listTag("Qualities"),
+        listTag("Exercises"),
+      ],
+    }),
+    updateQualityState: builder.mutation<
+      null,
+      { userId: string; stateId: string; payload: QualityStatePayload }
+    >({
+      async queryFn({ userId, stateId, payload }) {
+        const supabase = createClient()
+        const { error } = await supabase
+          .from("user_quality_states")
+          .update(payload)
+          .eq("id", stateId)
+          .eq("user_id", userId)
+
+        if (error) {
+          return { error: getErrorMessage(error) }
+        }
+
+        return { data: null }
+      },
+      invalidatesTags: (_result, _error, { stateId }) => [
+        listTag("QualityStates"),
+        { type: "QualityStates", id: stateId },
+      ],
+    }),
+    updateQualityStateSortKey: builder.mutation<
+      null,
+      { userId: string; stateId: string; payload: ProfileSortKeyPayload }
+    >({
+      async queryFn({ userId, stateId, payload }) {
+        const supabase = createClient()
+        const { error } = await supabase
+          .from("user_quality_states")
+          .update(payload)
+          .eq("id", stateId)
+          .eq("user_id", userId)
+
+        if (error) {
+          return { error: getErrorMessage(error) }
+        }
+
+        return { data: null }
+      },
+      invalidatesTags: (_result, _error, { stateId }) => [
+        listTag("QualityStates"),
+        { type: "QualityStates", id: stateId },
+      ],
+    }),
+    deleteQualityState: builder.mutation<
+      null,
+      { userId: string; stateId: string }
+    >({
+      async queryFn({ userId, stateId }) {
+        const supabase = createClient()
+        const { error } = await supabase
+          .from("user_quality_states")
+          .delete()
+          .eq("id", stateId)
+          .eq("user_id", userId)
+
+        if (error) {
+          return { error: getErrorMessage(error) }
+        }
+
+        return { data: null }
+      },
+      invalidatesTags: (_result, _error, { stateId }) => [
+        listTag("QualityStates"),
+        { type: "QualityStates", id: stateId },
       ],
     }),
     getSessions: builder.query<UserSession[], { userId: string }>({
@@ -1437,11 +1983,13 @@ export const trainingApi = createApi({
         const exerciseIds = Array.from(new Set(rows.map((row) => row.exercise_id)))
         const exerciseNamesById = new Map<string, string>()
         const exerciseNotesById = new Map<string, string | null>()
+        const exerciseImageUrlsById = new Map<string, string | null>()
+        const exerciseVideoUrlsById = new Map<string, string | null>()
 
         if (exerciseIds.length > 0) {
           const { data: exerciseRows, error: exerciseError } = await supabase
             .from("user_exercises")
-            .select("id,name,notes")
+            .select("id,name,notes,image_url,video_url")
             .eq("user_id", userId)
             .in("id", exerciseIds)
 
@@ -1452,6 +2000,8 @@ export const trainingApi = createApi({
           for (const exercise of exerciseRows ?? []) {
             exerciseNamesById.set(exercise.id, exercise.name)
             exerciseNotesById.set(exercise.id, exercise.notes)
+            exerciseImageUrlsById.set(exercise.id, exercise.image_url)
+            exerciseVideoUrlsById.set(exercise.id, exercise.video_url)
           }
         }
 
@@ -1461,6 +2011,10 @@ export const trainingApi = createApi({
             exercise_name:
               exerciseNamesById.get(row.exercise_id) ?? "Unknown exercise",
             exercise_notes: exerciseNotesById.get(row.exercise_id) ?? null,
+            exercise_image_url:
+              exerciseImageUrlsById.get(row.exercise_id) ?? null,
+            exercise_video_url:
+              exerciseVideoUrlsById.get(row.exercise_id) ?? null,
           })),
         }
       },
@@ -1500,6 +2054,35 @@ export const trainingApi = createApi({
       invalidatesTags: (_result, _error, { payload }) => [
         listTag("LoggedExercises"),
         { type: "LoggedExercises", id: payload.sessionId },
+      ],
+    }),
+    updateLoggedExercise: builder.mutation<
+      null,
+      {
+        userId: string
+        sessionId: string
+        loggedExerciseId: string
+        payload: LoggedExerciseUpdatePayload
+      }
+    >({
+      async queryFn({ userId, loggedExerciseId, payload }) {
+        const supabase = createClient()
+        const { error } = await supabase
+          .from("user_logged_exercises")
+          .update(payload)
+          .eq("id", loggedExerciseId)
+          .eq("user_id", userId)
+
+        if (error) {
+          return { error: getErrorMessage(error) }
+        }
+
+        return { data: null }
+      },
+      invalidatesTags: (_result, _error, { sessionId, loggedExerciseId }) => [
+        listTag("LoggedExercises"),
+        { type: "LoggedExercises", id: sessionId },
+        { type: "LoggedExercises", id: loggedExerciseId },
       ],
     }),
     getConversations: builder.query<
@@ -1748,6 +2331,8 @@ export const trainingApi = createApi({
 })
 
 export const {
+  useGetUserProfileQuery,
+  useUpsertUserProfileMutation,
   useGetExercisesQuery,
   useGetExerciseTypesQuery,
   useGetExerciseBodyRegionsQuery,
@@ -1768,6 +2353,12 @@ export const {
   useCreateQualityMutation,
   useUpdateQualityMutation,
   useUpdateQualitySortKeyMutation,
+  useDeleteQualityMutation,
+  useGetQualityStatesQuery,
+  useCreateQualityStateMutation,
+  useUpdateQualityStateMutation,
+  useUpdateQualityStateSortKeyMutation,
+  useDeleteQualityStateMutation,
   useGetSessionsQuery,
   useCreateSessionMutation,
   useUpdateSessionMutation,
@@ -1778,6 +2369,7 @@ export const {
   useDeleteSupersetMutation,
   useGetLoggedExercisesQuery,
   useCreateLoggedExerciseMutation,
+  useUpdateLoggedExerciseMutation,
   useGetConversationsQuery,
   useCreateConversationMutation,
   useTouchConversationMutation,

@@ -32,8 +32,8 @@ async function replaceAssignments({
   exerciseId: string
   table:
     | "user_exercise_type_assignments"
-    | "user_exercise_body_region_assignments"
-  idColumn: "type_id" | "body_region_id"
+    | "user_exercise_quality_assignments"
+  idColumn: "type_id" | "quality_id"
   ids: string[] | null | undefined
 }) {
   const { error: deleteError } = await supabase
@@ -70,10 +70,10 @@ async function loadExerciseTaxonomy(
   exerciseIds: string[]
 ) {
   const typeRowsByExerciseId = new Map<string, unknown[]>()
-  const bodyRegionRowsByExerciseId = new Map<string, unknown[]>()
+  const qualityRowsByExerciseId = new Map<string, unknown[]>()
 
   if (exerciseIds.length === 0) {
-    return { typeRowsByExerciseId, bodyRegionRowsByExerciseId }
+    return { typeRowsByExerciseId, qualityRowsByExerciseId }
   }
 
   const { data: typeAssignments, error: typeAssignmentsError } = await supabase
@@ -98,30 +98,30 @@ async function loadExerciseTaxonomy(
     typeRowsByExerciseId.set(exerciseId, rows)
   }
 
-  const { data: bodyRegionAssignments, error: bodyRegionAssignmentsError } =
+  const { data: qualityAssignments, error: qualityAssignmentsError } =
     await supabase
-      .from("user_exercise_body_region_assignments")
-      .select("exercise_id,body_region:user_exercise_body_regions(*)")
+      .from("user_exercise_quality_assignments")
+      .select("exercise_id,quality:user_qualities(*)")
       .eq("user_id", userId)
       .in("exercise_id", exerciseIds)
 
-  if (bodyRegionAssignmentsError) {
-    throw new Error(bodyRegionAssignmentsError.message)
+  if (qualityAssignmentsError) {
+    throw new Error(qualityAssignmentsError.message)
   }
 
-  for (const assignment of bodyRegionAssignments ?? []) {
+  for (const assignment of qualityAssignments ?? []) {
     const exerciseId = assignment.exercise_id as string
-    const bodyRegion = assignment.body_region
-    if (!bodyRegion) {
+    const quality = assignment.quality
+    if (!quality) {
       continue
     }
 
-    const rows = bodyRegionRowsByExerciseId.get(exerciseId) ?? []
-    rows.push(bodyRegion)
-    bodyRegionRowsByExerciseId.set(exerciseId, rows)
+    const rows = qualityRowsByExerciseId.get(exerciseId) ?? []
+    rows.push(quality)
+    qualityRowsByExerciseId.set(exerciseId, rows)
   }
 
-  return { typeRowsByExerciseId, bodyRegionRowsByExerciseId }
+  return { typeRowsByExerciseId, qualityRowsByExerciseId }
 }
 
 export async function whoAmI(_input: WhoAmIInput, accessToken: string) {
@@ -247,7 +247,7 @@ export async function listUserExercises(
   }
 
   const exercises = data ?? []
-  const { typeRowsByExerciseId, bodyRegionRowsByExerciseId } =
+  const { typeRowsByExerciseId, qualityRowsByExerciseId } =
     await loadExerciseTaxonomy(
       supabase,
       userId,
@@ -258,7 +258,7 @@ export async function listUserExercises(
     exercises: exercises.map((exercise) => ({
       ...exercise,
       types: typeRowsByExerciseId.get(exercise.id) ?? [],
-      body_regions: bodyRegionRowsByExerciseId.get(exercise.id) ?? [],
+      qualities: qualityRowsByExerciseId.get(exercise.id) ?? [],
     })),
     count: data?.length ?? 0,
   }
@@ -282,7 +282,7 @@ export async function listUserExerciseTaxonomy(
   }
 
   const { data: bodyRegions, error: bodyRegionsError } = await supabase
-    .from("user_exercise_body_regions")
+    .from("user_body_regions")
     .select("id,name,description,display_color,sort_key,is_system,created_at,updated_at")
     .eq("user_id", userId)
     .order("sort_key", { ascending: true })
@@ -292,9 +292,21 @@ export async function listUserExerciseTaxonomy(
     throw new Error(bodyRegionsError.message)
   }
 
+  const { data: qualities, error: qualitiesError } = await supabase
+    .from("user_qualities")
+    .select("id,name,notes,body_region_id,display_color,sort_key,created_at,updated_at")
+    .eq("user_id", userId)
+    .order("sort_key", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true })
+
+  if (qualitiesError) {
+    throw new Error(qualitiesError.message)
+  }
+
   return {
     types: types ?? [],
     bodyRegions: bodyRegions ?? [],
+    qualities: qualities ?? [],
   }
 }
 
@@ -333,16 +345,16 @@ export async function createUserExercise(
     supabase,
     userId,
     exerciseId: data.id,
-    table: "user_exercise_body_region_assignments",
-    idColumn: "body_region_id",
-    ids: input.bodyRegionIds,
+    table: "user_exercise_quality_assignments",
+    idColumn: "quality_id",
+    ids: input.qualityIds,
   })
 
   return {
     exercise: {
       ...data,
       types: [],
-      body_regions: [],
+      qualities: [],
     },
   }
 }
@@ -383,25 +395,25 @@ export async function updateUserExercise(
     })
   }
 
-  if (input.bodyRegionIds !== undefined) {
+  if (input.qualityIds !== undefined) {
     await replaceAssignments({
       supabase,
       userId,
       exerciseId: input.exerciseId,
-      table: "user_exercise_body_region_assignments",
-      idColumn: "body_region_id",
-      ids: input.bodyRegionIds,
+      table: "user_exercise_quality_assignments",
+      idColumn: "quality_id",
+      ids: input.qualityIds,
     })
   }
 
-  const { typeRowsByExerciseId, bodyRegionRowsByExerciseId } =
+  const { typeRowsByExerciseId, qualityRowsByExerciseId } =
     await loadExerciseTaxonomy(supabase, userId, [input.exerciseId])
 
   return {
     exercise: {
       ...data,
       types: typeRowsByExerciseId.get(input.exerciseId) ?? [],
-      body_regions: bodyRegionRowsByExerciseId.get(input.exerciseId) ?? [],
+      qualities: qualityRowsByExerciseId.get(input.exerciseId) ?? [],
     },
   }
 }
@@ -467,11 +479,11 @@ export async function updateUserQualityStatus(
   const { supabase, userId } = await getAuthContext(accessToken)
 
   const { data, error } = await supabase
-    .from("user_qualities")
+    .from("user_quality_states")
     .update({ status: input.status })
     .eq("user_id", userId)
-    .eq("id", input.qualityId)
-    .select("id,name,status,body_region,training_frequency_target,training_goal,updated_at")
+    .eq("quality_id", input.qualityId)
+    .select("id,quality_id,status,training_frequency_target,notes,updated_at")
     .single()
 
   if (error) {
@@ -479,7 +491,7 @@ export async function updateUserQualityStatus(
   }
 
   return {
-    quality: data,
+    qualityState: data,
   }
 }
 

@@ -17,7 +17,7 @@ import {
 
 import { useUserExerciseTaxonomy } from "@/hooks/use-user-exercise-taxonomy"
 import { cn } from "@/lib/utils"
-import type { UserExerciseBodyRegion, UserExerciseType } from "@/types/database"
+import type { UserBodyRegion, UserExerciseType } from "@/types/database"
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -27,7 +27,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -53,7 +52,7 @@ import {
 } from "./taxonomy-colors"
 
 type TaxonomyKind = "type" | "body_region"
-type TaxonomyItem = UserExerciseType | UserExerciseBodyRegion
+type TaxonomyItem = UserExerciseType | UserBodyRegion
 type DropPlacement = "before" | "after"
 type EditableTaxonomyField = "name" | "description"
 
@@ -224,31 +223,15 @@ function hasUnusableSortKeys(items: TaxonomyItem[]) {
   })
 }
 
-function getTaxonomyColorLabel(color: string | null) {
-  return (
-    TAXONOMY_COLOR_OPTIONS.find((option) => option.value === color)?.label ??
-    "None"
-  )
-}
-
 function TaxonomyColorDot({ color }: { color: string | null }) {
   return (
     <span
       className={cn(
-        "size-2 rounded-full border border-border",
+        "size-2.5 shrink-0 rounded-full border border-border",
         getTaxonomyColorDotClass(color)
       )}
       aria-hidden="true"
     />
-  )
-}
-
-function TaxonomyColorBadge({ color }: { color: string | null }) {
-  return (
-    <Badge variant="outline">
-      <TaxonomyColorDot color={color} />
-      {getTaxonomyColorLabel(color)}
-    </Badge>
   )
 }
 
@@ -301,12 +284,12 @@ function TaxonomyColorDropdown({
           <Button
             type="button"
             variant="ghost"
-            className="h-auto cursor-pointer p-0 hover:bg-transparent"
+            className="size-5 shrink-0 cursor-pointer rounded-full p-0"
             aria-label={`Choose color for ${item.name}`}
           />
         }
       >
-        <TaxonomyColorBadge color={item.display_color} />
+        <TaxonomyColorDot color={item.display_color} />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">
         <div className="grid grid-cols-3 gap-1.5">
@@ -348,10 +331,10 @@ function TaxonomyDesktopSkeletonRows() {
         <Skeleton className="size-6 rounded-md" />
       </td>
       <td className="px-4 py-3 align-middle">
-        <Skeleton className="h-4 w-40" />
-      </td>
-      <td className="px-4 py-3 align-middle">
-        <Skeleton className="h-5 w-16 rounded-full" />
+        <div className="flex items-center gap-2">
+          <Skeleton className="size-2.5 rounded-full" />
+          <Skeleton className="h-4 w-40" />
+        </div>
       </td>
       <td className="px-4 py-3 align-middle">
         <div className="space-y-2">
@@ -376,14 +359,14 @@ function TaxonomyMobileSkeletonCards() {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-2">
-          <Skeleton className="h-4 w-2/5" />
+          <div className="flex items-center gap-2">
+            <Skeleton className="size-2.5 rounded-full" />
+            <Skeleton className="h-4 w-2/5" />
+          </div>
           <Skeleton className="h-3 w-full" />
           <Skeleton className="h-3 w-4/5" />
         </div>
         <Skeleton className="h-8 w-8 rounded-md" />
-      </div>
-      <div className="flex items-end justify-between gap-2 pt-1">
-        <Skeleton className="h-5 w-16 rounded-full" />
       </div>
     </article>
   ))
@@ -689,7 +672,6 @@ export function TaxonomyManager({
           <colgroup>
             <col className="w-12" />
             <col className="w-[15rem]" />
-            <col className="w-[10rem]" />
             <col />
             <col className="w-24" />
           </colgroup>
@@ -697,7 +679,6 @@ export function TaxonomyManager({
             <tr>
               <th className="px-4 py-3 font-medium" />
               <th className="px-4 py-3 font-medium">Label</th>
-              <th className="px-4 py-3 font-medium">Color</th>
               <th className="px-4 py-3 font-medium">Description</th>
               <th className="px-4 py-3 text-right font-medium">Actions</th>
             </tr>
@@ -707,7 +688,7 @@ export function TaxonomyManager({
               <TaxonomyDesktopSkeletonRows />
             ) : items.length === 0 ? (
               <tr>
-                <td className="px-4 py-6 text-muted-foreground" colSpan={5}>
+                <td className="px-4 py-6 text-muted-foreground" colSpan={4}>
                   {emptyLabel}
                 </td>
               </tr>
@@ -767,35 +748,51 @@ export function TaxonomyManager({
                   >
                     <div className="space-y-1">
                       {isEditingName ? (
-                        <Input
-                          autoFocus
-                          className={CELL_NAME_EDITOR_CLASS}
-                          value={cellFormValues.name}
-                          maxLength={120}
-                          aria-label={`Name for ${item.name}`}
-                          onBlur={() => {
-                            void handleCellSave(item)
-                          }}
-                          onChange={(event) =>
-                            setCellFormValues((current) => ({
-                              ...current,
-                              name: event.target.value,
-                            }))
-                          }
-                          onKeyDown={(event) => {
-                            if (event.key === "Escape") {
-                              event.preventDefault()
-                              cancelCellEdit()
+                        <div className="flex min-w-0 items-center gap-2">
+                          <TaxonomyColorDropdown
+                            item={item}
+                            onSelect={(displayColor) => {
+                              void handleColorCellSelect(item, displayColor)
+                            }}
+                          />
+                          <Input
+                            autoFocus
+                            className={CELL_NAME_EDITOR_CLASS}
+                            value={cellFormValues.name}
+                            maxLength={120}
+                            aria-label={`Name for ${item.name}`}
+                            onBlur={() => {
+                              void handleCellSave(item)
+                            }}
+                            onChange={(event) =>
+                              setCellFormValues((current) => ({
+                                ...current,
+                                name: event.target.value,
+                              }))
                             }
-                            if (event.key === "Enter") {
-                              event.preventDefault()
-                              event.currentTarget.blur()
-                            }
-                          }}
-                        />
+                            onKeyDown={(event) => {
+                              if (event.key === "Escape") {
+                                event.preventDefault()
+                                cancelCellEdit()
+                              }
+                              if (event.key === "Enter") {
+                                event.preventDefault()
+                                event.currentTarget.blur()
+                              }
+                            }}
+                          />
+                        </div>
                       ) : (
-                        <div className="line-clamp-2 cursor-text font-medium text-foreground">
-                          {item.name}
+                        <div className="flex min-w-0 items-center gap-2">
+                          <TaxonomyColorDropdown
+                            item={item}
+                            onSelect={(displayColor) => {
+                              void handleColorCellSelect(item, displayColor)
+                            }}
+                          />
+                          <div className="line-clamp-2 cursor-text font-medium text-foreground">
+                            {item.name}
+                          </div>
                         </div>
                       )}
                       {isEditingName && cellFormError ? (
@@ -804,14 +801,6 @@ export function TaxonomyManager({
                         </p>
                       ) : null}
                     </div>
-                  </td>
-                  <td className="px-4 py-3 align-middle">
-                    <TaxonomyColorDropdown
-                      item={item}
-                      onSelect={(displayColor) => {
-                        void handleColorCellSelect(item, displayColor)
-                      }}
-                    />
                   </td>
                   <td
                     className="cursor-text px-4 py-3 align-middle"
@@ -913,39 +902,55 @@ export function TaxonomyManager({
                   <div className="min-w-0 flex-1">
                     <div className="space-y-1">
                       {isEditingName ? (
-                        <Input
-                          autoFocus
-                          className={CELL_NAME_EDITOR_CLASS}
-                          value={cellFormValues.name}
-                          maxLength={120}
-                          aria-label={`Name for ${item.name}`}
-                          onBlur={() => {
-                            void handleCellSave(item)
-                          }}
-                          onChange={(event) =>
-                            setCellFormValues((current) => ({
-                              ...current,
-                              name: event.target.value,
-                            }))
-                          }
-                          onKeyDown={(event) => {
-                            if (event.key === "Escape") {
-                              event.preventDefault()
-                              cancelCellEdit()
+                        <div className="flex min-w-0 items-center gap-2">
+                          <TaxonomyColorDropdown
+                            item={item}
+                            onSelect={(displayColor) => {
+                              void handleColorCellSelect(item, displayColor)
+                            }}
+                          />
+                          <Input
+                            autoFocus
+                            className={CELL_NAME_EDITOR_CLASS}
+                            value={cellFormValues.name}
+                            maxLength={120}
+                            aria-label={`Name for ${item.name}`}
+                            onBlur={() => {
+                              void handleCellSave(item)
+                            }}
+                            onChange={(event) =>
+                              setCellFormValues((current) => ({
+                                ...current,
+                                name: event.target.value,
+                              }))
                             }
-                            if (event.key === "Enter") {
-                              event.preventDefault()
-                              event.currentTarget.blur()
-                            }
-                          }}
-                        />
+                            onKeyDown={(event) => {
+                              if (event.key === "Escape") {
+                                event.preventDefault()
+                                cancelCellEdit()
+                              }
+                              if (event.key === "Enter") {
+                                event.preventDefault()
+                                event.currentTarget.blur()
+                              }
+                            }}
+                          />
+                        </div>
                       ) : (
-                        <h3
-                          className="line-clamp-2 cursor-text font-medium text-foreground"
-                          onClick={() => openCellEdit(item, "name")}
-                        >
-                          {item.name}
-                        </h3>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <TaxonomyColorDropdown
+                            item={item}
+                            onSelect={(displayColor) => {
+                              void handleColorCellSelect(item, displayColor)
+                            }}
+                          />
+                          <h3
+                            className="line-clamp-2 cursor-text font-medium text-foreground"
+                            onClick={() => openCellEdit(item, "name")}
+                          >
+                            {item.name}
+                          </h3>
+                        </div>
                       )}
                       {isEditingName && cellFormError ? (
                         <p className="text-xs text-destructive">
@@ -1021,14 +1026,6 @@ export function TaxonomyManager({
                     >
                       {item.description ?? "No description"}
                     </p>
-                    <div className="flex items-end gap-2 pt-1">
-                      <TaxonomyColorDropdown
-                        item={item}
-                        onSelect={(displayColor) => {
-                          void handleColorCellSelect(item, displayColor)
-                        }}
-                      />
-                    </div>
                   </>
                 )}
               </article>

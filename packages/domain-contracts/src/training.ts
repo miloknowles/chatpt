@@ -40,7 +40,7 @@ export const CreateUserExerciseInputSchema = z.object({
   imageUrl: z.string().url().nullable().optional(),
   videoUrl: z.string().url().nullable().optional(),
   exerciseTypeIds: z.array(z.string().uuid()).max(30).nullable().optional(),
-  bodyRegionIds: z.array(z.string().uuid()).max(30).nullable().optional(),
+  qualityIds: z.array(z.string().uuid()).max(30).nullable().optional(),
   performance: z.record(z.unknown()).nullable().optional(),
 })
 
@@ -52,7 +52,7 @@ export const UpdateUserExerciseInputSchema = z
     imageUrl: z.string().url().nullable().optional(),
     videoUrl: z.string().url().nullable().optional(),
     exerciseTypeIds: z.array(z.string().uuid()).max(30).nullable().optional(),
-    bodyRegionIds: z.array(z.string().uuid()).max(30).nullable().optional(),
+    qualityIds: z.array(z.string().uuid()).max(30).nullable().optional(),
     performance: z.record(z.unknown()).nullable().optional(),
   })
   .refine(
@@ -62,11 +62,11 @@ export const UpdateUserExerciseInputSchema = z
       value.imageUrl !== undefined ||
       value.videoUrl !== undefined ||
       value.exerciseTypeIds !== undefined ||
-      value.bodyRegionIds !== undefined ||
+      value.qualityIds !== undefined ||
       value.performance !== undefined,
     {
       message:
-        "At least one editable field is required: name, notes, imageUrl, videoUrl, exerciseTypeIds, bodyRegionIds, or performance.",
+        "At least one editable field is required: name, notes, imageUrl, videoUrl, exerciseTypeIds, qualityIds, or performance.",
     }
   )
 

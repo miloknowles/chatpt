@@ -15,6 +15,8 @@ type SupersetListProps = {
   isMutating: boolean
   draggedSupersetId: string | null
   dragOverSupersetId: string | null
+  draggedLoggedExerciseId: string | null
+  dragOverLoggedExerciseId: string | null
   loggedExercisesBySupersetId: Record<string, UserLoggedExercise[]>
   draftSupersetNames: Record<string, string>
   onSupersetDragStart: (
@@ -28,6 +30,20 @@ type SupersetListProps = {
   ) => void
   onSupersetDragLeave: () => void
   onSupersetDrop: SupersetDropHandler
+  onLoggedExerciseDragStart: (
+    event: DragEvent<HTMLElement>,
+    loggedExercise: UserLoggedExercise
+  ) => void
+  onLoggedExerciseDragEnd: () => void
+  onLoggedExerciseDragOver: (
+    event: DragEvent<HTMLElement>,
+    loggedExercise: UserLoggedExercise
+  ) => void
+  onLoggedExerciseDragLeave: () => void
+  onLoggedExerciseDrop: (
+    event: DragEvent<HTMLElement>,
+    loggedExercise: UserLoggedExercise
+  ) => void
   onDraftSupersetNameChange: (supersetId: string, value: string) => void
   onSaveSupersetName: (supersetId: string, previousName: string | null) => void
   onDeleteSuperset: (supersetId: string) => Promise<boolean>
@@ -52,6 +68,8 @@ export function SupersetList({
   isMutating,
   draggedSupersetId,
   dragOverSupersetId,
+  draggedLoggedExerciseId,
+  dragOverLoggedExerciseId,
   loggedExercisesBySupersetId,
   draftSupersetNames,
   onSupersetDragStart,
@@ -59,6 +77,11 @@ export function SupersetList({
   onSupersetDragOver,
   onSupersetDragLeave,
   onSupersetDrop,
+  onLoggedExerciseDragStart,
+  onLoggedExerciseDragEnd,
+  onLoggedExerciseDragOver,
+  onLoggedExerciseDragLeave,
+  onLoggedExerciseDrop,
   onDraftSupersetNameChange,
   onSaveSupersetName,
   onDeleteSuperset,
@@ -87,12 +110,19 @@ export function SupersetList({
             }
             isDragging={draggedSupersetId === superset.id}
             isDragTarget={dragOverSupersetId === superset.id}
+            draggedLoggedExerciseId={draggedLoggedExerciseId}
+            dragOverLoggedExerciseId={dragOverLoggedExerciseId}
             isMutating={isMutating}
             onDragStart={onSupersetDragStart}
             onDragEnd={onSupersetDragEnd}
             onDragOver={onSupersetDragOver}
             onDragLeave={onSupersetDragLeave}
             onDrop={onSupersetDrop}
+            onLoggedExerciseDragStart={onLoggedExerciseDragStart}
+            onLoggedExerciseDragEnd={onLoggedExerciseDragEnd}
+            onLoggedExerciseDragOver={onLoggedExerciseDragOver}
+            onLoggedExerciseDragLeave={onLoggedExerciseDragLeave}
+            onLoggedExerciseDrop={onLoggedExerciseDrop}
             onDraftNameChange={onDraftSupersetNameChange}
             onSaveName={onSaveSupersetName}
             onDelete={onDeleteSuperset}

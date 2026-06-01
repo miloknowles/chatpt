@@ -8,13 +8,15 @@ import { trainingApi } from "@/lib/redux/training-api"
 import { createClient } from "@/lib/supabase/client"
 
 const realtimeTables = [
+  "user_profiles",
   "user_issues",
   "user_qualities",
+  "user_quality_states",
   "user_exercises",
   "user_exercise_types",
-  "user_exercise_body_regions",
+  "user_body_regions",
   "user_exercise_type_assignments",
-  "user_exercise_body_region_assignments",
+  "user_exercise_quality_assignments",
   "user_sessions",
   "user_supersets",
   "user_logged_exercises",
@@ -53,10 +55,30 @@ export function DataRealtimeBridge() {
             return
           }
 
+          if (table === "user_profiles") {
+            dispatch(
+              trainingApi.util.invalidateTags([
+                { type: "UserProfile", id: "LIST" },
+              ])
+            )
+            return
+          }
+
           if (table === "user_qualities") {
             dispatch(
               trainingApi.util.invalidateTags([
                 { type: "Qualities", id: "LIST" },
+                { type: "Exercises", id: "LIST" },
+                { type: "QualityStates", id: "LIST" },
+              ])
+            )
+            return
+          }
+
+          if (table === "user_quality_states") {
+            dispatch(
+              trainingApi.util.invalidateTags([
+                { type: "QualityStates", id: "LIST" },
               ])
             )
             return
@@ -74,9 +96,9 @@ export function DataRealtimeBridge() {
 
           if (
             table === "user_exercise_types" ||
-            table === "user_exercise_body_regions" ||
+            table === "user_body_regions" ||
             table === "user_exercise_type_assignments" ||
-            table === "user_exercise_body_region_assignments"
+            table === "user_exercise_quality_assignments"
           ) {
             dispatch(
               trainingApi.util.invalidateTags([

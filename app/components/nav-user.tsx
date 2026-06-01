@@ -22,7 +22,7 @@ import {
   ChevronsUpDownIcon,
   Loader2,
   LogOutIcon,
-  Settings2Icon,
+  SettingsIcon,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 
@@ -44,6 +44,20 @@ export function NavUser({
   const { isMobile } = useSidebar()
   const router = useRouter()
   const avatarSeed = user.email.trim().toLowerCase()
+  const avatar = user.avatarUrl ? (
+    <img
+      src={user.avatarUrl}
+      alt={user.name}
+      className="size-full object-cover"
+    />
+  ) : (
+    <BoringAvatar
+      size={32}
+      name={avatarSeed}
+      variant="beam"
+      colors={BRAND_BEAM_DUOTONE_COLORS}
+    />
+  )
 
   return (
     <SidebarMenu>
@@ -55,24 +69,13 @@ export function NavUser({
             }
           >
             <div className="size-8 shrink-0 overflow-hidden rounded-full">
-              {user.avatarUrl ? (
-                <img
-                  src={user.avatarUrl}
-                  alt={user.name}
-                  className="size-full object-cover"
-                />
-              ) : (
-                <BoringAvatar
-                  size={32}
-                  name={avatarSeed}
-                  variant="beam"
-                  colors={BRAND_BEAM_DUOTONE_COLORS}
-                />
-              )}
+              {avatar}
             </div>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-medium">{user.name}</span>
-              <span className="truncate text-xs">{user.email}</span>
+              <span className="truncate text-xs text-muted-foreground">
+                {user.email}
+              </span>
             </div>
             <ChevronsUpDownIcon className="ml-auto size-4" />
           </DropdownMenuTrigger>
@@ -86,16 +89,13 @@ export function NavUser({
               <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <div className="size-8 shrink-0 overflow-hidden rounded-full">
-                    <BoringAvatar
-                      size={32}
-                      name={avatarSeed}
-                      variant="beam"
-                      colors={BRAND_BEAM_DUOTONE_COLORS}
-                    />
+                    {avatar}
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user.name}</span>
-                    <span className="truncate text-xs">{user.email}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {user.email}
+                    </span>
                   </div>
                 </div>
               </DropdownMenuLabel>
@@ -107,7 +107,7 @@ export function NavUser({
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => router.push("/training/settings")}>
-              <Settings2Icon />
+              <SettingsIcon />
               User settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />

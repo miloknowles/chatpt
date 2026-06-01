@@ -31,10 +31,10 @@ Each tool uses bearer auth from the request header (`Authorization: Bearer <toke
 ### Exercise library mutation design
 
 - `create_user_exercise`: adds an exercise record in `user_exercises`.
-- `list_user_exercise_taxonomy`: lists the authenticated user's exercise types and body regions.
-- `update_user_exercise`: updates only fields explicitly provided (`name`, `notes`, `imageUrl`, `videoUrl`, `exerciseTypeIds`, `bodyRegionIds`, `performance`).
+- `list_user_exercise_taxonomy`: lists the authenticated user's exercise types, body regions, and trained qualities.
+- `update_user_exercise`: updates only fields explicitly provided (`name`, `notes`, `imageUrl`, `videoUrl`, `exerciseTypeIds`, `qualityIds`, `performance`).
 - `delete_user_exercise`: hard-deletes a single exercise by `exerciseId`.
-- Exercise type/body-region IDs are assigned through taxonomy assignment tables; freeform `tags` are no longer part of exercises.
+- Exercise type and trained quality IDs are assigned through assignment tables; freeform `tags` are no longer part of exercises.
 - All mutations are user-scoped (`user_id` + `id`) and enforced by both query filters and Supabase RLS owner policies.
 
 ## Environment variables

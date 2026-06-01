@@ -160,7 +160,7 @@ export function createTrainingMcpServer() {
     {
       title: "List User Exercise Taxonomy",
       description:
-        "List exercise types and body regions for the authenticated user's exercise library.",
+        "List exercise types, body regions, and trained qualities for the authenticated user's exercise library.",
       inputSchema: ListUserExerciseTaxonomyInputSchema,
     },
     async (args: unknown, extra: unknown) => {
@@ -232,7 +232,7 @@ export function createTrainingMcpServer() {
     "update_user_quality_status",
     {
       title: "Update User Quality Status",
-      description: "Update quality status (building, maintaining, inactive).",
+      description: "Update a Profile quality state status (building, maintaining, inactive).",
       inputSchema: UpdateUserQualityStatusInputSchema,
     },
     async (args: unknown, extra: unknown) => {

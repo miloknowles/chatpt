@@ -35,19 +35,20 @@ import {
   getTaxonomyColorDotClass,
   TAXONOMY_COLOR_OPTIONS,
 } from "./taxonomy-colors"
-import type { ExerciseTaxonomyItem, ExerciseTaxonomySelection } from "./types"
+import type { ExercisePickerItem, ExerciseTaxonomySelection } from "./types"
 
 type TaxonomyDropdownProps = {
   label: string
-  createLabel: string
-  options: ExerciseTaxonomyItem[]
+  createLabel?: string
+  options: ExercisePickerItem[]
   values: ExerciseTaxonomySelection[]
   trigger: ReactElement
   triggerChildren: ReactNode
   contentClassName?: string
+  allowCreate?: boolean
   onChange: (nextValues: ExerciseTaxonomySelection[]) => void | Promise<void>
-  onUpdateItem: (
-    item: ExerciseTaxonomyItem,
+  onUpdateItem?: (
+    item: ExercisePickerItem,
     values: { name: string; display_color: string | null }
   ) => Promise<{ error?: string }>
 }
@@ -60,11 +61,12 @@ export function TaxonomyDropdown({
   trigger,
   triggerChildren,
   contentClassName = "w-(--anchor-width) min-w-64",
+  allowCreate = true,
   onChange,
   onUpdateItem,
 }: TaxonomyDropdownProps) {
   const [query, setQuery] = useState("")
-  const [editingItem, setEditingItem] = useState<ExerciseTaxonomyItem | null>(
+  const [editingItem, setEditingItem] = useState<ExercisePickerItem | null>(
     null
   )
   const [editName, setEditName] = useState("")
@@ -107,6 +109,7 @@ export function TaxonomyDropdown({
   }, [normalizedQuery, searchableOptions])
 
   const canCreate =
+    allowCreate &&
     normalizedQuery.length > 0 &&
     !searchableOptions.some(
       (option) => option.name.toLowerCase() === normalizedQuery.toLowerCase()
@@ -145,7 +148,7 @@ export function TaxonomyDropdown({
     return item.display_color ?? null
   }
 
-  function openEditDialog(item: ExerciseTaxonomyItem) {
+  function openEditDialog(item: ExercisePickerItem) {
     setEditingItem(item)
     setEditName(item.name)
     setEditColor(item.display_color)
@@ -167,6 +170,10 @@ export function TaxonomyDropdown({
 
     setIsSavingEdit(true)
     setEditError(null)
+    if (!onUpdateItem) {
+      return
+    }
+
     const result = await onUpdateItem(editingItem, {
       name: nextName,
       display_color: editColor,
@@ -210,7 +217,7 @@ export function TaxonomyDropdown({
                   createValue()
                 }
               }}
-              placeholder="Search or type a new option"
+              placeholder={allowCreate ? "Search or type a new option" : "Search options"}
             />
           </div>
           <DropdownMenuSeparator />
@@ -221,7 +228,7 @@ export function TaxonomyDropdown({
                 createValue()
               }}
             >
-              {createLabel} &quot;{normalizedQuery}&quot;
+              {createLabel ?? "Create option"} &quot;{normalizedQuery}&quot;
             </DropdownMenuItem>
           ) : null}
           {filteredOptions.map((option) => {
@@ -244,7 +251,7 @@ export function TaxonomyDropdown({
                   />
                   <span className="truncate">{option.name}</span>
                 </DropdownMenuCheckboxItem>
-                {optionRow ? (
+                {optionRow && onUpdateItem ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger
                       render={

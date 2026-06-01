@@ -13,6 +13,8 @@ import { getTaxonomyColorDotClass } from "./taxonomy-colors"
 import type {
   ExerciseTaxonomyItem,
   ExerciseTaxonomySelection,
+  ExerciseQualityItem,
+  ExercisePickerItem,
   UserExercise,
 } from "./types"
 import { formatDate } from "./utils"
@@ -20,16 +22,31 @@ import { formatDate } from "./utils"
 function TaxonomyDot({ color }: { color: string | null }) {
   return (
     <span
-      className={`size-2 rounded-full border border-border ${getTaxonomyColorDotClass(color)}`}
+      className={`size-2 shrink-0 rounded-full border border-border ${getTaxonomyColorDotClass(color)}`}
       aria-hidden="true"
     />
+  )
+}
+
+function TaxonomyBadge({
+  color,
+  name,
+}: {
+  color: string | null
+  name: string
+}) {
+  return (
+    <Badge variant="outline" className="max-w-full min-w-0">
+      <TaxonomyDot color={color} />
+      <span className="min-w-0 truncate">{name}</span>
+    </Badge>
   )
 }
 
 type ExerciseLibraryTableProps = {
   exercises: UserExercise[]
   exerciseTypes: ExerciseTaxonomyItem[]
-  bodyRegions: ExerciseTaxonomyItem[]
+  qualities: ExerciseQualityItem[]
   isLoading: boolean
   emptyState: string | null
   isSubmitting: boolean
@@ -38,13 +55,13 @@ type ExerciseLibraryTableProps = {
   onAddPhoto: (exercise: UserExercise) => void
   onAddVideo: (exercise: UserExercise) => void
   onUpdateTaxonomyItem: (
-    kind: "type" | "body_region",
-    item: ExerciseTaxonomyItem,
+    kind: "type",
+    item: ExercisePickerItem,
     values: { name: string; display_color: string | null }
   ) => Promise<{ error?: string }>
   onUpdateExerciseTaxonomy: (
     exercise: UserExercise,
-    kind: "types" | "bodyRegions",
+    kind: "types" | "qualities",
     values: ExerciseTaxonomySelection[]
   ) => Promise<void>
 }
@@ -52,7 +69,7 @@ type ExerciseLibraryTableProps = {
 export function ExerciseLibraryTable({
   exercises,
   exerciseTypes,
-  bodyRegions,
+  qualities,
   isLoading,
   emptyState,
   isSubmitting,
@@ -65,11 +82,11 @@ export function ExerciseLibraryTable({
 }: ExerciseLibraryTableProps) {
   return (
     <div className="hidden min-h-0 flex-1 overflow-auto rounded-md border border-border/60 md:block">
-      <table className="w-full min-w-[760px] table-fixed text-left text-sm">
+      <table className="w-full min-w-[900px] table-fixed text-left text-sm">
         <colgroup>
           <col className="w-[20rem]" />
-          <col className="w-[11rem]" />
-          <col className="w-[11rem]" />
+          <col className="w-[14rem]" />
+          <col className="w-[14rem]" />
           <col />
           <col className="w-32" />
           <col className="w-24" />
@@ -78,7 +95,7 @@ export function ExerciseLibraryTable({
           <tr>
             <th className="px-4 py-3 font-medium">Name</th>
             <th className="px-4 py-3 font-medium">Exercise Type(s)</th>
-            <th className="px-4 py-3 font-medium">Body Region(s)</th>
+            <th className="px-4 py-3 font-medium">Trained Qualities</th>
             <th className="px-4 py-3 font-medium">Media</th>
             <th className="px-4 py-3 font-medium">Updated</th>
             <th className="px-4 py-3 text-right font-medium">Actions</th>
@@ -155,22 +172,20 @@ export function ExerciseLibraryTable({
                     <Button
                       type="button"
                       variant="ghost"
-                      className="h-auto min-h-8 w-full justify-start whitespace-normal px-1.5 py-1 text-left"
+                      className="h-auto min-h-8 w-full min-w-0 justify-start whitespace-normal px-1.5 py-1 text-left"
                       disabled={isSubmitting}
                       aria-label={`Edit exercise types for ${exercise.name}`}
                     />
                   }
                   triggerChildren={
                     exercise.types.length ? (
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex min-w-0 flex-wrap gap-1">
                         {exercise.types.map((type) => (
-                          <Badge
+                          <TaxonomyBadge
                             key={`${exercise.id}-type-${type.id}`}
-                            variant="outline"
-                          >
-                            <TaxonomyDot color={type.display_color} />
-                            {type.name}
-                          </Badge>
+                            color={type.display_color}
+                            name={type.name}
+                          />
                         ))}
                       </div>
                     ) : (
@@ -187,49 +202,44 @@ export function ExerciseLibraryTable({
               </td>
               <td className="px-4 py-3 align-top">
                 <TaxonomyDropdown
-                  label="Body Regions"
-                  createLabel="Create Body Region"
-                  options={bodyRegions}
-                  values={exercise.body_regions.map((bodyRegion) => ({
-                    id: bodyRegion.id,
-                    name: bodyRegion.name,
-                    display_color: bodyRegion.display_color,
+                  label="Trained Qualities"
+                  createLabel="Create quality"
+                  options={qualities}
+                  values={exercise.qualities.map((quality) => ({
+                    id: quality.id,
+                    name: quality.name,
+                    display_color: quality.display_color,
                   }))}
                   trigger={
                     <Button
                       type="button"
                       variant="ghost"
-                      className="h-auto min-h-8 w-full justify-start whitespace-normal px-1.5 py-1 text-left"
+                      className="h-auto min-h-8 w-full min-w-0 justify-start whitespace-normal px-1.5 py-1 text-left"
                       disabled={isSubmitting}
-                      aria-label={`Edit body regions for ${exercise.name}`}
+                      aria-label={`Edit trained qualities for ${exercise.name}`}
                     />
                   }
                   triggerChildren={
-                    exercise.body_regions.length ? (
-                      <div className="flex flex-wrap gap-1">
-                        {exercise.body_regions.map((bodyRegion) => (
-                          <Badge
-                            key={`${exercise.id}-region-${bodyRegion.id}`}
-                            variant="outline"
-                          >
-                            <TaxonomyDot color={bodyRegion.display_color} />
-                            {bodyRegion.name}
-                          </Badge>
+                    exercise.qualities.length ? (
+                      <div className="flex min-w-0 flex-wrap gap-1">
+                        {exercise.qualities.map((quality) => (
+                          <TaxonomyBadge
+                            key={`${exercise.id}-quality-${quality.id}`}
+                            color={quality.display_color}
+                            name={quality.name}
+                          />
                         ))}
                       </div>
                     ) : (
                       <span className="text-muted-foreground">None</span>
                     )
                   }
-                  onChange={(nextBodyRegions) =>
+                  onChange={(nextQualities) =>
                     onUpdateExerciseTaxonomy(
                       exercise,
-                      "bodyRegions",
-                      nextBodyRegions
+                      "qualities",
+                      nextQualities
                     )
-                  }
-                  onUpdateItem={(item, values) =>
-                    onUpdateTaxonomyItem("body_region", item, values)
                   }
                 />
               </td>

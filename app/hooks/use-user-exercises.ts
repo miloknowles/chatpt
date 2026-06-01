@@ -10,6 +10,7 @@ import {
   useGetExerciseBodyRegionsQuery,
   useGetExerciseTypesQuery,
   useGetExercisesQuery,
+  useGetQualitiesQuery,
   useUpdateExerciseMutation,
   useUpdateExerciseImageUrlMutation,
   useUpdateExerciseVideoUrlMutation,
@@ -28,11 +29,15 @@ import {
 interface UseUserExercisesOptions {
   pageSize?: number
   searchQuery?: string
+  typeIds?: string[]
+  qualityIds?: string[]
 }
 
 export function useUserExercises({
   pageSize = 10,
   searchQuery = "",
+  typeIds = [],
+  qualityIds = [],
 }: UseUserExercisesOptions = {}) {
   const { user, isLoading: isAuthLoading } = useAuth()
   const [page, setPage] = useState(1)
@@ -44,6 +49,8 @@ export function useUserExercises({
           page,
           pageSize,
           searchQuery: normalizedSearchQuery,
+          typeIds,
+          qualityIds,
         }
       : skipToken
   const taxonomyArgs =
@@ -56,6 +63,7 @@ export function useUserExercises({
   const exercisesQuery = useGetExercisesQuery(queryArgs)
   const exerciseTypesQuery = useGetExerciseTypesQuery(taxonomyArgs)
   const bodyRegionsQuery = useGetExerciseBodyRegionsQuery(taxonomyArgs)
+  const qualitiesQuery = useGetQualitiesQuery(taxonomyArgs)
   const [createExerciseMutation, createExerciseState] =
     useCreateExerciseMutation()
   const [updateExerciseMutation, updateExerciseState] =
@@ -227,9 +235,10 @@ export function useUserExercises({
         exercisesQuery.refetch(),
         exerciseTypesQuery.refetch(),
         bodyRegionsQuery.refetch(),
+        qualitiesQuery.refetch(),
       ])
     },
-    [bodyRegionsQuery, exerciseTypesQuery, exercisesQuery, page]
+    [bodyRegionsQuery, exerciseTypesQuery, exercisesQuery, page, qualitiesQuery]
   )
 
   return useMemo(
@@ -237,6 +246,7 @@ export function useUserExercises({
       exercises,
       exerciseTypes: exerciseTypesQuery.data ?? [],
       bodyRegions: bodyRegionsQuery.data ?? [],
+      qualities: qualitiesQuery.data ?? [],
       totalCount,
       page,
       pageSize,
@@ -245,16 +255,19 @@ export function useUserExercises({
         isAuthLoading ||
         exercisesQuery.isLoading ||
         exerciseTypesQuery.isLoading ||
-        bodyRegionsQuery.isLoading,
+        bodyRegionsQuery.isLoading ||
+        qualitiesQuery.isLoading,
       isRefreshing:
         exercisesQuery.isFetching ||
         exerciseTypesQuery.isFetching ||
-        bodyRegionsQuery.isFetching,
+        bodyRegionsQuery.isFetching ||
+        qualitiesQuery.isFetching,
       isMutating,
       error:
         getRtkErrorMessage(exercisesQuery.error) ??
         getRtkErrorMessage(exerciseTypesQuery.error) ??
-        getRtkErrorMessage(bodyRegionsQuery.error),
+        getRtkErrorMessage(bodyRegionsQuery.error) ??
+        getRtkErrorMessage(qualitiesQuery.error),
       mutationError,
       setPage,
       refresh,
@@ -285,6 +298,10 @@ export function useUserExercises({
       mutationError,
       page,
       pageSize,
+      qualitiesQuery.data,
+      qualitiesQuery.error,
+      qualitiesQuery.isFetching,
+      qualitiesQuery.isLoading,
       refresh,
       totalCount,
       totalPages,

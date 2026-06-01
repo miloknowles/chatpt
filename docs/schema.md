@@ -52,20 +52,52 @@ create table user_issue_relationships (
   foreign key (user_id, related_issue_id) references user_issues(user_id, id) on delete cascade
 );
 
+-- Body regions: anatomical grouping metadata for qualities
+create table user_body_regions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users on delete cascade not null,
+  name text not null,
+  description text,
+  display_color text,
+  sort_key text not null,
+  is_system boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, id),
+  unique (user_id, name),
+  check (length(btrim(name)) > 0)
+);
+
 -- Qualities: what's being trained
 create table user_qualities (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users on delete cascade not null,
   name text not null,
   notes text,
-  body_region text, -- unstructured text field for now
-  status text not null check (status in ('building', 'maintaining', 'inactive')),
-  training_frequency_target text, -- "daily", "3x_week", "2x_week", etc.
-  training_goal text, -- when is this quality "enough"?
+  body_region_id uuid,
+  display_color text,
+  sort_key text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (user_id, id),
-  unique (user_id, name)
+  unique (user_id, name),
+  foreign key (user_id, body_region_id) references user_body_regions(user_id, id) on delete set null (body_region_id)
+);
+
+-- Profile-specific quality state
+create table user_quality_states (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users on delete cascade not null,
+  quality_id uuid not null,
+  status text not null check (status in ('building', 'maintaining', 'inactive')),
+  training_frequency_target text, -- "daily", "3x_week", "2x_week", etc.
+  notes text,
+  sort_key text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, id),
+  unique (user_id, quality_id),
+  foreign key (user_id, quality_id) references user_qualities(user_id, id) on delete cascade
 );
 
 -- Issue ↔ Quality (many-to-many)
@@ -113,21 +145,6 @@ create table user_exercise_types (
   check (length(btrim(name)) > 0)
 );
 
-create table user_exercise_body_regions (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users on delete cascade not null,
-  name text not null,
-  description text,
-  display_color text,
-  sort_key text not null,
-  is_system boolean not null default false,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (user_id, id),
-  unique (user_id, name),
-  check (length(btrim(name)) > 0)
-);
-
 create table user_exercise_type_assignments (
   user_id uuid references auth.users on delete cascade not null,
   exercise_id uuid not null,
@@ -139,15 +156,15 @@ create table user_exercise_type_assignments (
   foreign key (user_id, type_id) references user_exercise_types(user_id, id) on delete cascade
 );
 
-create table user_exercise_body_region_assignments (
+create table user_exercise_quality_assignments (
   user_id uuid references auth.users on delete cascade not null,
   exercise_id uuid not null,
-  body_region_id uuid not null,
+  quality_id uuid not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  primary key (user_id, exercise_id, body_region_id),
+  primary key (user_id, exercise_id, quality_id),
   foreign key (user_id, exercise_id) references user_exercises(user_id, id) on delete cascade,
-  foreign key (user_id, body_region_id) references user_exercise_body_regions(user_id, id) on delete cascade
+  foreign key (user_id, quality_id) references user_qualities(user_id, id) on delete cascade
 );
 
 -- Sessions

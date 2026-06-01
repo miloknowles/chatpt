@@ -87,7 +87,7 @@ export function ExerciseLibraryMobileList({
 
             <div className="flex items-end justify-between gap-2 pt-1">
               <div className="flex flex-wrap gap-1">
-                {exercise.types.length || exercise.body_regions.length ? (
+                {exercise.types.length || exercise.qualities.length ? (
                   <>
                     {exercise.types.map((type) => (
                       <Badge key={`${exercise.id}-type-${type.id}`} variant="outline">
@@ -95,13 +95,13 @@ export function ExerciseLibraryMobileList({
                         {type.name}
                       </Badge>
                     ))}
-                    {exercise.body_regions.map((bodyRegion) => (
+                    {exercise.qualities.map((quality) => (
                       <Badge
-                        key={`${exercise.id}-region-${bodyRegion.id}`}
+                        key={`${exercise.id}-quality-${quality.id}`}
                         variant="outline"
                       >
-                        <TaxonomyDot color={bodyRegion.display_color} />
-                        {bodyRegion.name}
+                        <TaxonomyDot color={quality.display_color} />
+                        {quality.name}
                       </Badge>
                     ))}
                   </>

@@ -107,7 +107,6 @@ A movement. Same entity for strength, mobility, activation, and cardio — only 
 Exercise
   - name
   - types: refs to ExerciseType (mobility, activation, strength, coordination, etc.; can be custom)
-  - body_regions: refs to ExerciseBodyRegion (shoulders, lower leg, chest, etc.; can be custom)
   - qualities_hit: list of ExerciseQualityLink (see below)
   - default_load_rep_scheme (strength)
   - default_duration_distance_zone (cardio)
@@ -115,13 +114,13 @@ Exercise
   - notes
 ```
 
-**Types and body regions are taxonomy, not qualities:** Exercise types and body regions are user-owned taxonomy rows attached through assignment tables. They are for library organization and session-builder filtering. The deeper "what quality does this train?" relationship belongs in `ExerciseQualityLink`, not in exercise tags.
+**Types and qualities are the useful exercise-library facets:** Exercise types organize the method. Trained qualities explain why the exercise is in the library and support substitution/gap detection. Body regions are kept as anatomical metadata on qualities, not as direct exercise tags.
 
 **Cardio as exercise:** Running, biking, swimming are modeled as exercises rather than a separate entity. Easy run, long run, tempo run, strides each become "exercises" linked to qualities. This avoids parallel logging systems.
 
-### ExerciseType / ExerciseBodyRegion
+### ExerciseType / BodyRegion
 
-User-owned taxonomy options for filtering and organizing exercises. The system can have built-in/default rows later, but users can create custom rows while the taxonomy is still evolving.
+User-owned taxonomy options. Exercise types filter and organize exercises directly. Body regions group qualities anatomically.
 
 ```
 ExerciseType
@@ -131,7 +130,7 @@ ExerciseType
   - sort_key
   - is_system
 
-ExerciseBodyRegion
+BodyRegion
   - name
   - description
   - display_color
@@ -139,7 +138,7 @@ ExerciseBodyRegion
   - is_system
 ```
 
-**Why tables instead of text arrays:** These values need stable IDs, sorting, custom user-created options, and many-to-many assignment without typo drift. Exercise type and body region assignments are separate bridge tables.
+**Why tables instead of text arrays:** These values need stable IDs, sorting, custom user-created options, and many-to-many assignment without typo drift. Exercise type and quality assignments are separate bridge tables; body regions are referenced by qualities.
 
 ### ExerciseQualityLink
 
