@@ -294,7 +294,7 @@ export async function listUserExerciseTaxonomy(
 
   const { data: qualities, error: qualitiesError } = await supabase
     .from("user_qualities")
-    .select("id,name,notes,body_region_id,display_color,sort_key,created_at,updated_at")
+    .select("id,name,description,body_region_id,display_color,sort_key,created_at,updated_at")
     .eq("user_id", userId)
     .order("sort_key", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true })

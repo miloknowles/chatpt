@@ -119,7 +119,7 @@ export type IssuePayload = {
 
 export type QualityPayload = {
   name: string
-  notes: string | null
+  description: string | null
   body_region_id: string | null
   display_color: string | null
   sort_key?: string | null
@@ -1339,6 +1339,26 @@ export const trainingApi = createApi({
         { type: "Issues", id: issueId },
       ],
     }),
+    deleteIssue: builder.mutation<null, { userId: string; issueId: string }>({
+      async queryFn({ userId, issueId }) {
+        const supabase = createClient()
+        const { error } = await supabase
+          .from("user_issues")
+          .delete()
+          .eq("id", issueId)
+          .eq("user_id", userId)
+
+        if (error) {
+          return { error: getErrorMessage(error) }
+        }
+
+        return { data: null }
+      },
+      invalidatesTags: (_result, _error, { issueId }) => [
+        listTag("Issues"),
+        { type: "Issues", id: issueId },
+      ],
+    }),
     getQualities: builder.query<UserQuality[], { userId: string }>({
       async queryFn({ userId }) {
         const supabase = createClient()
@@ -1408,7 +1428,7 @@ export const trainingApi = createApi({
         const optimisticUpdatedAt = new Date().toISOString()
         const patchQuality = (quality: UserQuality) => {
           quality.name = payload.name
-          quality.notes = payload.notes
+          quality.description = payload.description
           quality.body_region_id = payload.body_region_id
           quality.display_color = payload.display_color
           if (payload.sort_key !== undefined) {
@@ -1613,7 +1633,7 @@ export const trainingApi = createApi({
               .insert({
                 user_id: userId,
                 name,
-                notes: null,
+                description: null,
                 body_region_id: null,
                 display_color: null,
                 sort_key: generateKeyBetween(
@@ -2349,6 +2369,7 @@ export const {
   useCreateIssueMutation,
   useUpdateIssueMutation,
   useUpdateIssueSortKeyMutation,
+  useDeleteIssueMutation,
   useGetQualitiesQuery,
   useCreateQualityMutation,
   useUpdateQualityMutation,

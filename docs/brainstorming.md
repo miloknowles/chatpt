@@ -92,7 +92,7 @@ Quality
   - last_touched: derived from session logs
   - standard: optional — what "done" or "enough" looks like
   - related_issues: list of Issue refs (the "why")
-  - notes
+  - description
 ```
 
 **Status enum kept simple:** `building`, `maintaining`, `inactive`. The earlier four-state version (acquiring / consolidating / maintaining / at-standard) was more granularity than would actually be used day-to-day. `Inactive` is distinct from never-tracked — it means previously trained, currently dormant, may want surfacing for review.

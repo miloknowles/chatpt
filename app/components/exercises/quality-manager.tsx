@@ -1,6 +1,12 @@
 "use client"
 
-import { useMemo, useState, type DragEvent, type FormEvent } from "react"
+import {
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+  type FormEvent,
+} from "react"
 import { generateKeyBetween, generateNKeysBetween } from "fractional-indexing"
 import {
   GripVerticalIcon,
@@ -47,18 +53,29 @@ import {
 } from "./taxonomy-colors"
 
 type DropPlacement = "before" | "after"
+type EditableQualityField = "name" | "description"
+
+type ActiveQualityCell = {
+  qualityId: string
+  field: EditableQualityField
+}
 
 type QualityFormValues = {
   name: string
   displayColor: string | null
-  notes: string
+  description: string
 }
 
 const EMPTY_FORM_VALUES: QualityFormValues = {
   name: "",
   displayColor: null,
-  notes: "",
+  description: "",
 }
+
+const CELL_NAME_EDITOR_CLASS =
+  "h-auto rounded-none border-0 bg-transparent p-0 font-medium text-foreground shadow-none focus-visible:border-transparent focus-visible:ring-0 md:text-sm dark:bg-transparent"
+const CELL_DESCRIPTION_EDITOR_CLASS =
+  "h-auto rounded-none border-0 bg-transparent p-0 text-foreground shadow-none focus-visible:border-transparent focus-visible:ring-0 md:text-sm dark:bg-transparent"
 
 function optionalText(value: string) {
   const trimmed = value.trim()
@@ -69,7 +86,7 @@ function qualityToFormValues(quality: UserQuality): QualityFormValues {
   return {
     name: quality.name,
     displayColor: quality.display_color,
-    notes: quality.notes ?? "",
+    description: quality.description ?? "",
   }
 }
 
@@ -380,10 +397,15 @@ export function QualityManager() {
     useState<UserQuality | null>(null)
   const [formValues, setFormValues] =
     useState<QualityFormValues>(EMPTY_FORM_VALUES)
+  const [activeCell, setActiveCell] = useState<ActiveQualityCell | null>(null)
+  const [cellFormValues, setCellFormValues] =
+    useState<QualityFormValues>(EMPTY_FORM_VALUES)
   const [formError, setFormError] = useState<string | null>(null)
+  const [cellFormError, setCellFormError] = useState<string | null>(null)
   const [draggedQualityId, setDraggedQualityId] = useState<string | null>(null)
   const [dragOverQualityId, setDragOverQualityId] = useState<string | null>(null)
   const [dropPlacement, setDropPlacement] = useState<DropPlacement>("before")
+  const shouldSkipNextCellSaveRef = useRef(false)
 
   function openCreateForm() {
     setEditingQuality(null)
@@ -404,6 +426,27 @@ export function QualityManager() {
     setEditingQuality(null)
     setFormValues(EMPTY_FORM_VALUES)
     setFormError(null)
+  }
+
+  function openCellEdit(quality: UserQuality, field: EditableQualityField) {
+    setActiveCell({ qualityId: quality.id, field })
+    setCellFormValues(qualityToFormValues(quality))
+    setCellFormError(null)
+  }
+
+  function closeCellEdit() {
+    setActiveCell(null)
+    setCellFormValues(EMPTY_FORM_VALUES)
+    setCellFormError(null)
+  }
+
+  function cancelCellEdit() {
+    shouldSkipNextCellSaveRef.current = true
+    closeCellEdit()
+  }
+
+  function isActiveCell(qualityId: string, field: EditableQualityField) {
+    return activeCell?.qualityId === qualityId && activeCell.field === field
   }
 
   async function reindexQualities(qualitiesToIndex: UserQuality[]) {
@@ -440,7 +483,7 @@ export function QualityManager() {
 
     const payload = {
       name,
-      notes: optionalText(formValues.notes),
+      description: optionalText(formValues.description),
       display_color: formValues.displayColor,
       body_region_id: editingQuality?.body_region_id ?? null,
       sort_key: editingQuality ? editingQuality.sort_key : createSortKey,
@@ -455,6 +498,77 @@ export function QualityManager() {
     }
 
     closeForm()
+  }
+
+  async function handleCellSave(quality: UserQuality) {
+    if (shouldSkipNextCellSaveRef.current) {
+      shouldSkipNextCellSaveRef.current = false
+      return
+    }
+
+    if (!activeCell || activeCell.qualityId !== quality.id) {
+      return
+    }
+
+    setCellFormError(null)
+    const name = cellFormValues.name.trim()
+    if (!name) {
+      setCellFormError("Name is required.")
+      return
+    }
+
+    const description = optionalText(cellFormValues.description)
+    const hasChanges =
+      name !== quality.name ||
+      description !== quality.description ||
+      cellFormValues.displayColor !== quality.display_color
+
+    if (!hasChanges) {
+      closeCellEdit()
+      return
+    }
+
+    const result = await updateQuality(quality.id, {
+      name,
+      description,
+      display_color: cellFormValues.displayColor,
+      body_region_id: quality.body_region_id,
+      sort_key: quality.sort_key,
+    })
+
+    if (result.error) {
+      setCellFormError(result.error)
+      return
+    }
+
+    closeCellEdit()
+  }
+
+  async function handleColorCellSelect(
+    quality: UserQuality,
+    displayColor: string | null
+  ) {
+    setCellFormError(null)
+
+    if (displayColor === quality.display_color) {
+      closeCellEdit()
+      return
+    }
+
+    const result = await updateQuality(quality.id, {
+      name: quality.name,
+      description: quality.description,
+      display_color: displayColor,
+      body_region_id: quality.body_region_id,
+      sort_key: quality.sort_key,
+    })
+
+    if (result.error) {
+      setCellFormError(result.error)
+      return
+    }
+
+    closeCellEdit()
   }
 
   function handleDragStart(
@@ -529,7 +643,7 @@ export function QualityManager() {
 
     const result = await updateQuality(quality.id, {
       name: quality.name,
-      notes: quality.notes,
+      description: quality.description,
       display_color: displayColor,
       body_region_id: quality.body_region_id,
       sort_key: quality.sort_key,
@@ -542,6 +656,9 @@ export function QualityManager() {
 
   function renderQualityRow(quality: UserQuality) {
     const isDragOver = dragOverQualityId === quality.id
+    const isEditingQuality = activeCell?.qualityId === quality.id
+    const isEditingName = isActiveCell(quality.id, "name")
+    const isEditingDescription = isActiveCell(quality.id, "description")
 
     return (
       <tr
@@ -570,7 +687,8 @@ export function QualityManager() {
             type="button"
             variant="ghost"
             size="icon-xs"
-            draggable
+            draggable={!isEditingQuality}
+            disabled={isEditingQuality}
             aria-label={`Drag ${quality.name}`}
             onDragStart={(event) => handleDragStart(event, quality.id)}
             onDragEnd={() => {
@@ -581,23 +699,105 @@ export function QualityManager() {
             <GripVerticalIcon />
           </Button>
         </td>
-        <td className="px-4 py-3 align-middle">
-          <div className="flex min-w-0 items-center gap-2">
-            <QualityColorDropdown
-              quality={quality}
-              disabled={isMutating}
-              onSelect={(displayColor) => {
-                void handleColorSelect(quality, displayColor)
-              }}
-            />
-            <div className="line-clamp-2 font-medium text-foreground">
-              {quality.name}
-            </div>
+        <td
+          className="cursor-text px-4 py-3 align-middle"
+          onDoubleClick={() => openCellEdit(quality, "name")}
+        >
+          <div className="space-y-1">
+            {isEditingName ? (
+              <div className="flex min-w-0 items-center gap-2">
+                <QualityColorDropdown
+                  quality={quality}
+                  disabled={isMutating}
+                  onSelect={(displayColor) => {
+                    void handleColorCellSelect(quality, displayColor)
+                  }}
+                />
+                <Input
+                  autoFocus
+                  className={CELL_NAME_EDITOR_CLASS}
+                  value={cellFormValues.name}
+                  maxLength={120}
+                  aria-label={`Name for ${quality.name}`}
+                  onBlur={() => {
+                    void handleCellSave(quality)
+                  }}
+                  onChange={(event) =>
+                    setCellFormValues((current) => ({
+                      ...current,
+                      name: event.target.value,
+                    }))
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault()
+                      cancelCellEdit()
+                    }
+                    if (event.key === "Enter") {
+                      event.preventDefault()
+                      event.currentTarget.blur()
+                    }
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="flex min-w-0 items-center gap-2">
+                <QualityColorDropdown
+                  quality={quality}
+                  disabled={isMutating}
+                  onSelect={(displayColor) => {
+                    void handleColorSelect(quality, displayColor)
+                  }}
+                />
+                <div className="line-clamp-2 cursor-text font-medium text-foreground">
+                  {quality.name}
+                </div>
+              </div>
+            )}
+            {isEditingName && cellFormError ? (
+              <p className="text-xs text-destructive">{cellFormError}</p>
+            ) : null}
           </div>
         </td>
-        <td className="px-4 py-3 align-middle text-muted-foreground">
-          <div className="line-clamp-1">
-            {quality.notes ?? "No description"}
+        <td
+          className="cursor-text px-4 py-3 align-middle"
+          onDoubleClick={() => openCellEdit(quality, "description")}
+        >
+          <div className="space-y-1">
+            {isEditingDescription ? (
+              <Input
+                autoFocus
+                value={cellFormValues.description}
+                aria-label={`Description for ${quality.name}`}
+                className={CELL_DESCRIPTION_EDITOR_CLASS}
+                onBlur={() => {
+                  void handleCellSave(quality)
+                }}
+                onChange={(event) =>
+                  setCellFormValues((current) => ({
+                    ...current,
+                    description: event.target.value,
+                  }))
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.preventDefault()
+                    cancelCellEdit()
+                  }
+                  if (event.key === "Enter") {
+                    event.preventDefault()
+                    event.currentTarget.blur()
+                  }
+                }}
+              />
+            ) : (
+              <div className="line-clamp-1 cursor-text text-muted-foreground">
+                {quality.description ?? "No description"}
+              </div>
+            )}
+            {isEditingDescription && cellFormError ? (
+              <p className="text-xs text-destructive">{cellFormError}</p>
+            ) : null}
           </div>
         </td>
         <td className="px-4 py-3 align-top">
@@ -627,7 +827,7 @@ export function QualityManager() {
         </div>
         <Button
           type="button"
-          className="h-10 w-10 rounded-full shadow-lg"
+          className="size-9 rounded-full shadow-lg"
           onClick={openCreateForm}
           aria-label="Add trained quality"
         >
@@ -680,6 +880,12 @@ export function QualityManager() {
         ) : (
           sortedQualities.map((quality) => {
             const isDragOver = dragOverQualityId === quality.id
+            const isEditingQuality = activeCell?.qualityId === quality.id
+            const isEditingName = isActiveCell(quality.id, "name")
+            const isEditingDescription = isActiveCell(
+              quality.id,
+              "description"
+            )
             return (
               <article
                 key={quality.id}
@@ -704,28 +910,115 @@ export function QualityManager() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1 space-y-2">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <QualityColorDropdown
-                        quality={quality}
-                        disabled={isMutating}
-                        onSelect={(displayColor) => {
-                          void handleColorSelect(quality, displayColor)
-                        }}
-                      />
-                      <h3 className="line-clamp-2 font-medium text-foreground">
-                        {quality.name}
-                      </h3>
+                    <div className="space-y-1">
+                      {isEditingName ? (
+                        <div className="flex min-w-0 items-center gap-2">
+                          <QualityColorDropdown
+                            quality={quality}
+                            disabled={isMutating}
+                            onSelect={(displayColor) => {
+                              void handleColorCellSelect(quality, displayColor)
+                            }}
+                          />
+                          <Input
+                            autoFocus
+                            className={CELL_NAME_EDITOR_CLASS}
+                            value={cellFormValues.name}
+                            maxLength={120}
+                            aria-label={`Name for ${quality.name}`}
+                            onBlur={() => {
+                              void handleCellSave(quality)
+                            }}
+                            onChange={(event) =>
+                              setCellFormValues((current) => ({
+                                ...current,
+                                name: event.target.value,
+                              }))
+                            }
+                            onKeyDown={(event) => {
+                              if (event.key === "Escape") {
+                                event.preventDefault()
+                                cancelCellEdit()
+                              }
+                              if (event.key === "Enter") {
+                                event.preventDefault()
+                                event.currentTarget.blur()
+                              }
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex min-w-0 items-center gap-2">
+                          <QualityColorDropdown
+                            quality={quality}
+                            disabled={isMutating}
+                            onSelect={(displayColor) => {
+                              void handleColorSelect(quality, displayColor)
+                            }}
+                          />
+                          <h3
+                            className="line-clamp-2 cursor-text font-medium text-foreground"
+                            onClick={() => openCellEdit(quality, "name")}
+                          >
+                            {quality.name}
+                          </h3>
+                        </div>
+                      )}
+                      {isEditingName && cellFormError ? (
+                        <p className="text-xs text-destructive">
+                          {cellFormError}
+                        </p>
+                      ) : null}
                     </div>
-                    <p className="line-clamp-2 text-sm text-muted-foreground">
-                      {quality.notes ?? "No description"}
-                    </p>
+                    {isEditingDescription ? (
+                      <div className="space-y-1">
+                        <Input
+                          autoFocus
+                          value={cellFormValues.description}
+                          aria-label={`Description for ${quality.name}`}
+                          className={CELL_DESCRIPTION_EDITOR_CLASS}
+                          onBlur={() => {
+                            void handleCellSave(quality)
+                          }}
+                          onChange={(event) =>
+                            setCellFormValues((current) => ({
+                              ...current,
+                              description: event.target.value,
+                            }))
+                          }
+                          onKeyDown={(event) => {
+                            if (event.key === "Escape") {
+                              event.preventDefault()
+                              cancelCellEdit()
+                            }
+                            if (event.key === "Enter") {
+                              event.preventDefault()
+                              event.currentTarget.blur()
+                            }
+                          }}
+                        />
+                        {cellFormError ? (
+                          <p className="text-xs text-destructive">
+                            {cellFormError}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p
+                        className="line-clamp-2 cursor-text text-sm text-muted-foreground"
+                        onClick={() => openCellEdit(quality, "description")}
+                      >
+                        {quality.description ?? "No description"}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon-xs"
-                      draggable
+                      draggable={!isEditingQuality}
+                      disabled={isEditingQuality}
                       aria-label={`Drag ${quality.name}`}
                       onDragStart={(event) =>
                         handleDragStart(event, quality.id)
@@ -814,15 +1107,15 @@ export function QualityManager() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="quality-notes">Description</Label>
+              <Label htmlFor="quality-description">Description</Label>
               <Textarea
-                id="quality-notes"
-                value={formValues.notes}
+                id="quality-description"
+                value={formValues.description}
                 className="min-h-24"
                 onChange={(event) =>
                   setFormValues((current) => ({
                     ...current,
-                    notes: event.target.value,
+                    description: event.target.value,
                   }))
                 }
               />

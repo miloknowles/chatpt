@@ -655,7 +655,7 @@ export function TaxonomyManager({
         </div>
         <Button
           type="button"
-          className="h-10 w-10 rounded-full shadow-lg"
+          className="size-9 rounded-full shadow-lg"
           onClick={openCreateForm}
           aria-label={`Add ${title}`}
         >

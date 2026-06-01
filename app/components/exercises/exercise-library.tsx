@@ -150,7 +150,7 @@ function toOptimisticExercise(
         id: value.id ?? `optimistic:quality:${value.name.toLowerCase()}`,
         user_id: exercise.user_id,
         name: value.name,
-        notes: null,
+        description: null,
         body_region_id: null,
         display_color: value.display_color ?? null,
         sort_key: null,
@@ -196,7 +196,7 @@ function TaxonomyFilterDropdown({
           <Button
             type="button"
             variant={selectedCount ? "secondary" : "outline"}
-            className="h-9 justify-between gap-2"
+            className="h-9 w-36 justify-between gap-2"
             disabled={options.length === 0}
           />
         }
@@ -564,15 +564,16 @@ export function ExerciseLibrary() {
           {hasActiveTaxonomyFilters ? (
             <Button
               type="button"
-              variant="ghost"
+              variant="link"
               size="sm"
+              className="px-0"
               onClick={clearTaxonomyFilters}
             >
               Clear filters
             </Button>
           ) : null}
           <Button
-            className="h-10 w-10 rounded-full shadow-lg"
+            className="size-9 rounded-full shadow-lg"
             onClick={openCreateSheet}
             aria-label="Create Exercise"
           >

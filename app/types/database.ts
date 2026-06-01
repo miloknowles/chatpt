@@ -245,7 +245,7 @@ export interface Database {
           id: string
           user_id: string
           name: string
-          notes: string | null
+          description: string | null
           body_region_id: string | null
           display_color: string | null
           sort_key: string | null
@@ -256,7 +256,7 @@ export interface Database {
           id?: string
           user_id: string
           name: string
-          notes?: string | null
+          description?: string | null
           body_region_id?: string | null
           display_color?: string | null
           sort_key?: string | null
@@ -267,7 +267,7 @@ export interface Database {
           id?: string
           user_id?: string
           name?: string
-          notes?: string | null
+          description?: string | null
           body_region_id?: string | null
           display_color?: string | null
           sort_key?: string | null

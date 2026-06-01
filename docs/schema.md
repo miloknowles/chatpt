@@ -73,7 +73,7 @@ create table user_qualities (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users on delete cascade not null,
   name text not null,
-  notes text,
+  description text,
   body_region_id uuid,
   display_color text,
   sort_key text,

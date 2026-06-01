@@ -8,6 +8,7 @@ import {
   useCreateIssueMutation,
   useCreateQualityMutation,
   useCreateQualityStateMutation,
+  useDeleteIssueMutation,
   useDeleteQualityStateMutation,
   useDeleteQualityMutation,
   useGetUserProfileQuery,
@@ -53,6 +54,7 @@ export function useUserProfile() {
   const [updateIssueMutation, updateIssueState] = useUpdateIssueMutation()
   const [updateIssueSortKeyMutation, updateIssueSortKeyState] =
     useUpdateIssueSortKeyMutation()
+  const [deleteIssueMutation, deleteIssueState] = useDeleteIssueMutation()
   const [createQualityMutation, createQualityMutationState] =
     useCreateQualityMutation()
   const [updateQualityMutation, updateQualityMutationState] =
@@ -77,6 +79,7 @@ export function useUserProfile() {
     createIssueState.isLoading ||
     updateIssueState.isLoading ||
     updateIssueSortKeyState.isLoading ||
+    deleteIssueState.isLoading ||
     createQualityMutationState.isLoading ||
     updateQualityMutationState.isLoading ||
     updateQualitySortKeyState.isLoading ||
@@ -90,6 +93,7 @@ export function useUserProfile() {
     getRtkErrorMessage(createIssueState.error) ??
     getRtkErrorMessage(updateIssueState.error) ??
     getRtkErrorMessage(updateIssueSortKeyState.error) ??
+    getRtkErrorMessage(deleteIssueState.error) ??
     getRtkErrorMessage(createQualityMutationState.error) ??
     getRtkErrorMessage(updateQualityMutationState.error) ??
     getRtkErrorMessage(updateQualitySortKeyState.error) ??
@@ -165,6 +169,22 @@ export function useUserProfile() {
       }
     },
     [updateIssueSortKeyMutation, user]
+  )
+
+  const deleteIssue = useCallback(
+    async (issueId: string): HookActionResult => {
+      if (!user) {
+        return { error: "You must be signed in." }
+      }
+
+      try {
+        await deleteIssueMutation({ userId: user.id, issueId }).unwrap()
+        return {}
+      } catch (error) {
+        return { error: getThrownErrorMessage(error) }
+      }
+    },
+    [deleteIssueMutation, user]
   )
 
   const createQuality = useCallback(
@@ -341,6 +361,7 @@ export function useUserProfile() {
       createIssue,
       updateIssue,
       reorderIssue,
+      deleteIssue,
       createQuality,
       updateQuality,
       reorderQuality,
@@ -354,6 +375,7 @@ export function useUserProfile() {
       createIssue,
       createQuality,
       createQualityState,
+      deleteIssue,
       deleteQualityState,
       deleteQuality,
       isAuthLoading,

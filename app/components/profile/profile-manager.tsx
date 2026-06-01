@@ -12,19 +12,41 @@ import {
 import { generateKeyBetween } from "fractional-indexing"
 import {
   ActivityIcon,
+  AlertCircleIcon,
+  ChartSplineIcon,
+  CheckCircle2Icon,
+  CircleSlashIcon,
   GripVerticalIcon,
   LoaderCircleIcon,
   PencilIcon,
   PlusIcon,
+  Repeat2Icon,
   SparklesIcon,
   Trash2Icon,
-  XIcon,
 } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
 import { Badge } from "@/components/ui/badge"
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -104,13 +126,57 @@ function formatStatus(status: string) {
 }
 
 function statusVariant(status: string): "default" | "outline" | "secondary" {
-  if (status === "active" || status === "building") {
+  if (status === "building") {
     return "default"
   }
-  if (status === "resolved" || status === "inactive") {
+  if (status === "active" || status === "resolved" || status === "inactive") {
     return "outline"
   }
   return "secondary"
+}
+
+function statusClassName(status: string) {
+  if (status === "active") {
+    return "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300"
+  }
+  if (status === "resolved") {
+    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+  }
+  if (status === "building") {
+    return "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+  }
+  if (status === "maintaining") {
+    return "border-muted-foreground/25 bg-muted text-muted-foreground"
+  }
+  return undefined
+}
+
+function renderStatusIcon(status: string) {
+  if (status === "active") {
+    return <AlertCircleIcon data-icon="inline-start" />
+  }
+  if (status === "resolved") {
+    return <CheckCircle2Icon data-icon="inline-start" />
+  }
+  if (status === "building") {
+    return <ChartSplineIcon data-icon="inline-start" />
+  }
+  if (status === "maintaining") {
+    return <Repeat2Icon data-icon="inline-start" />
+  }
+  if (status === "inactive") {
+    return <CircleSlashIcon data-icon="inline-start" />
+  }
+  return <ActivityIcon data-icon="inline-start" />
+}
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <Badge variant={statusVariant(status)} className={statusClassName(status)}>
+      {renderStatusIcon(status)}
+      {formatStatus(status)}
+    </Badge>
+  )
 }
 
 function selectClassName() {
@@ -452,17 +518,20 @@ export function ProfileManager() {
     createIssue,
     updateIssue,
     reorderIssue,
+    deleteIssue,
     updateUserProfile,
     updateQuality,
     createQualityState,
     updateQualityState,
     reorderQualityState,
-    deleteQualityState,
   } = useUserProfile()
 
-  const [isEditingIssue, setIsEditingIssue] = useState(false)
-  const [isEditingQuality, setIsEditingQuality] = useState(false)
+  const [isIssueDialogOpen, setIsIssueDialogOpen] = useState(false)
+  const [isQualityDialogOpen, setIsQualityDialogOpen] = useState(false)
   const [editingIssue, setEditingIssue] = useState<UserIssue | null>(null)
+  const [pendingDeleteIssue, setPendingDeleteIssue] =
+    useState<UserIssue | null>(null)
+  const [deleteIssueError, setDeleteIssueError] = useState<string | null>(null)
   const [editingQuality, setEditingQuality] =
     useState<UserQualityStateWithQuality | null>(null)
   const [issueForm, setIssueForm] = useState<IssueFormValues>(EMPTY_ISSUE_FORM)
@@ -485,18 +554,18 @@ export function ProfileManager() {
     setEditingIssue(null)
     setIssueForm(EMPTY_ISSUE_FORM)
     setIssueFormError(null)
-    setIsEditingIssue(true)
+    setIsIssueDialogOpen(true)
   }
 
   function openEditIssueForm(issue: UserIssue) {
     setEditingIssue(issue)
     setIssueForm(issueToFormValues(issue))
     setIssueFormError(null)
-    setIsEditingIssue(true)
+    setIsIssueDialogOpen(true)
   }
 
   function closeIssueForm() {
-    setIsEditingIssue(false)
+    setIsIssueDialogOpen(false)
     setEditingIssue(null)
     setIssueForm(EMPTY_ISSUE_FORM)
     setIssueFormError(null)
@@ -506,21 +575,46 @@ export function ProfileManager() {
     setEditingQuality(null)
     setQualityForm(EMPTY_QUALITY_FORM)
     setQualityFormError(null)
-    setIsEditingQuality(true)
+    setIsQualityDialogOpen(true)
   }
 
   function openEditQualityForm(quality: UserQualityStateWithQuality) {
     setEditingQuality(quality)
     setQualityForm(qualityToFormValues(quality))
     setQualityFormError(null)
-    setIsEditingQuality(true)
+    setIsQualityDialogOpen(true)
   }
 
   function closeQualityForm() {
-    setIsEditingQuality(false)
+    setIsQualityDialogOpen(false)
     setEditingQuality(null)
     setQualityForm(EMPTY_QUALITY_FORM)
     setQualityFormError(null)
+  }
+
+  function handleIssueDialogOpenChange(open: boolean) {
+    if (open) {
+      setIsIssueDialogOpen(true)
+      return
+    }
+
+    closeIssueForm()
+  }
+
+  function handleQualityDialogOpenChange(open: boolean) {
+    if (open) {
+      setIsQualityDialogOpen(true)
+      return
+    }
+
+    closeQualityForm()
+  }
+
+  function handleDeleteIssueDialogOpenChange(open: boolean) {
+    if (!open) {
+      setPendingDeleteIssue(null)
+      setDeleteIssueError(null)
+    }
   }
 
   async function handleIssueSubmit(event: FormEvent<HTMLFormElement>) {
@@ -553,6 +647,22 @@ export function ProfileManager() {
     closeIssueForm()
   }
 
+  async function handleDeleteIssue() {
+    if (!pendingDeleteIssue) {
+      return
+    }
+
+    setDeleteIssueError(null)
+    const result = await deleteIssue(pendingDeleteIssue.id)
+    if (result.error) {
+      setDeleteIssueError(result.error)
+      return
+    }
+
+    setPendingDeleteIssue(null)
+    closeIssueForm()
+  }
+
   async function handleQualitySubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setQualityFormError(null)
@@ -577,7 +687,7 @@ export function ProfileManager() {
     if (editingQuality && editingQuality.quality.name !== name) {
       const qualityResult = await updateQuality(editingQuality.quality.id, {
         name,
-        notes: editingQuality.quality.notes,
+        description: editingQuality.quality.description,
         body_region_id: editingQuality.quality.body_region_id,
         display_color: editingQuality.quality.display_color,
         sort_key: editingQuality.quality.sort_key,
@@ -610,7 +720,13 @@ export function ProfileManager() {
       return
     }
 
-    const result = await deleteQualityState(editingQuality.id)
+    const result = await updateQualityState(editingQuality.id, {
+      status: "inactive",
+      training_frequency_target: optionalText(
+        qualityForm.trainingFrequencyTarget
+      ),
+      notes: optionalText(qualityForm.notes),
+    })
     if (result.error) {
       setQualityFormError(result.error)
       return
@@ -730,88 +846,14 @@ export function ProfileManager() {
               type="button"
               size="icon-sm"
               variant="outline"
-              aria-label={isEditingIssue ? "Close issue form" : "Add issue"}
-              onClick={isEditingIssue ? closeIssueForm : openNewIssueForm}
+              aria-label="Add issue"
+              onClick={openNewIssueForm}
             >
-              {isEditingIssue ? <XIcon /> : <PlusIcon />}
+              <PlusIcon />
             </Button>
           </div>
 
           <div className="space-y-3">
-            {isEditingIssue ? (
-              <form
-                className="rounded-md border border-border/70 bg-muted/20 p-3"
-                onSubmit={handleIssueSubmit}
-              >
-                <div className="grid gap-3 sm:grid-cols-[1fr_140px]">
-                  <div className="space-y-2">
-                    <Label htmlFor="issue-name">Issue</Label>
-                    <Input
-                      id="issue-name"
-                      value={issueForm.name}
-                      maxLength={120}
-                      placeholder="Left knee valgus"
-                      onChange={(event) =>
-                        setIssueForm((current) => ({
-                          ...current,
-                          name: event.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="issue-status">Status</Label>
-                    <select
-                      id="issue-status"
-                      className={selectClassName()}
-                      value={issueForm.status}
-                      onChange={(event) =>
-                        setIssueForm((current) => ({
-                          ...current,
-                          status: event.target.value as UserIssueStatus,
-                        }))
-                      }
-                    >
-                      <option value="active">Active</option>
-                      <option value="resolved">Resolved</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="mt-3 space-y-2">
-                  <Label htmlFor="issue-notes">Notes</Label>
-                  <Textarea
-                    id="issue-notes"
-                    value={issueForm.notes}
-                    placeholder="Triggers, context, current plan"
-                    onChange={(event) =>
-                      setIssueForm((current) => ({
-                        ...current,
-                        notes: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                {issueFormError || mutationError ? (
-                  <p className="mt-3 text-sm text-destructive">
-                    {issueFormError ?? mutationError}
-                  </p>
-                ) : null}
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="mt-3"
-                  disabled={isMutating}
-                >
-                  {editingIssue ? <PencilIcon /> : <PlusIcon />}
-                  {isMutating
-                    ? "Saving..."
-                    : editingIssue
-                      ? "Save Issue"
-                      : "Add Issue"}
-                </Button>
-              </form>
-            ) : null}
-
             {isLoading ? (
               <p className="rounded-md border border-border/70 p-3 text-sm text-muted-foreground">
                 Loading issues...
@@ -884,9 +926,7 @@ export function ProfileManager() {
                             {issue.notes ?? "No notes yet."}
                           </p>
                         </div>
-                        <Badge variant={statusVariant(issue.status)}>
-                          {formatStatus(issue.status)}
-                        </Badge>
+                        <StatusBadge status={issue.status} />
                       </div>
                     </div>
                   </article>
@@ -913,119 +953,14 @@ export function ProfileManager() {
               type="button"
               size="icon-sm"
               variant="outline"
-              aria-label={
-                isEditingQuality ? "Close quality form" : "Add quality"
-              }
-              onClick={
-                isEditingQuality ? closeQualityForm : openNewQualityForm
-              }
+              aria-label="Add quality"
+              onClick={openNewQualityForm}
             >
-              {isEditingQuality ? <XIcon /> : <PlusIcon />}
+              <PlusIcon />
             </Button>
           </div>
 
           <div className="space-y-3">
-            {isEditingQuality ? (
-              <form
-                className="rounded-md border border-border/70 bg-muted/20 p-3"
-                onSubmit={handleQualitySubmit}
-              >
-                <div className="grid gap-3 sm:grid-cols-[1fr_150px]">
-                  <div className="space-y-2">
-                    <Label htmlFor="quality-name">Quality</Label>
-                    <Input
-                      id="quality-name"
-                      value={qualityForm.name}
-                      maxLength={120}
-                      placeholder="Ankle dorsiflexion control"
-                      onChange={(event) =>
-                        setQualityForm((current) => ({
-                          ...current,
-                          name: event.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="quality-status">Status</Label>
-                    <select
-                      id="quality-status"
-                      className={selectClassName()}
-                      value={qualityForm.status}
-                      onChange={(event) =>
-                        setQualityForm((current) => ({
-                          ...current,
-                          status: event.target.value as UserQualityStatus,
-                        }))
-                      }
-                    >
-                      <option value="building">Building</option>
-                      <option value="maintaining">Maintaining</option>
-                      <option value="inactive">Inactive</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="mt-3 space-y-2">
-                  <Label htmlFor="quality-target">Frequency Target</Label>
-                  <Input
-                    id="quality-target"
-                    value={qualityForm.trainingFrequencyTarget}
-                    maxLength={120}
-                    placeholder="Daily warmup exposure"
-                    onChange={(event) =>
-                      setQualityForm((current) => ({
-                        ...current,
-                        trainingFrequencyTarget: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="mt-3 space-y-2">
-                  <Label htmlFor="quality-notes">Notes</Label>
-                  <Textarea
-                    id="quality-notes"
-                    value={qualityForm.notes}
-                    placeholder="Progression notes, constraints, and cues"
-                    onChange={(event) =>
-                      setQualityForm((current) => ({
-                        ...current,
-                        notes: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                {qualityFormError || mutationError ? (
-                  <p className="mt-3 text-sm text-destructive">
-                    {qualityFormError ?? mutationError}
-                  </p>
-                ) : null}
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button type="submit" size="sm" disabled={isMutating}>
-                    {editingQuality ? <PencilIcon /> : <PlusIcon />}
-                    {isMutating
-                      ? "Saving..."
-                      : editingQuality
-                        ? "Save Quality"
-                        : "Add Quality"}
-                  </Button>
-                  {editingQuality ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={isMutating}
-                      onClick={() => {
-                        void handleRemoveQualityFromProfile()
-                      }}
-                    >
-                      <Trash2Icon />
-                      Remove from Profile
-                    </Button>
-                  ) : null}
-                </div>
-              </form>
-            ) : null}
-
             {isLoading ? (
               <p className="rounded-md border border-border/70 p-3 text-sm text-muted-foreground">
                 Loading qualities...
@@ -1101,9 +1036,7 @@ export function ProfileManager() {
                               "No target yet."}
                           </p>
                         </div>
-                        <Badge variant={statusVariant(quality.status)}>
-                          {formatStatus(quality.status)}
-                        </Badge>
+                        <StatusBadge status={quality.status} />
                       </div>
                     </div>
                   </article>
@@ -1113,6 +1046,263 @@ export function ProfileManager() {
           </div>
         </section>
       </div>
+
+      <Dialog
+        open={isIssueDialogOpen}
+        onOpenChange={handleIssueDialogOpenChange}
+      >
+        <DialogContent>
+          <form onSubmit={handleIssueSubmit}>
+            <DialogHeader>
+              <DialogTitle>
+                {editingIssue ? "Edit Issue" : "Add Issue"}
+              </DialogTitle>
+              <DialogDescription>
+                Track a problem, limitation, or risk that affects training.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid gap-3 py-4 sm:grid-cols-[1fr_140px]">
+              <div className="space-y-2">
+                <Label htmlFor="issue-name">Issue</Label>
+                <Input
+                  id="issue-name"
+                  value={issueForm.name}
+                  maxLength={120}
+                  placeholder="Left knee valgus"
+                  autoFocus
+                  onChange={(event) =>
+                    setIssueForm((current) => ({
+                      ...current,
+                      name: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="issue-status">Status</Label>
+                <select
+                  id="issue-status"
+                  className={selectClassName()}
+                  value={issueForm.status}
+                  onChange={(event) =>
+                    setIssueForm((current) => ({
+                      ...current,
+                      status: event.target.value as UserIssueStatus,
+                    }))
+                  }
+                >
+                  <option value="active">Active</option>
+                  <option value="resolved">Resolved</option>
+                </select>
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="issue-notes">Notes</Label>
+                <Textarea
+                  id="issue-notes"
+                  value={issueForm.notes}
+                  placeholder="Triggers, context, current plan"
+                  onChange={(event) =>
+                    setIssueForm((current) => ({
+                      ...current,
+                      notes: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              {issueFormError || mutationError ? (
+                <p className="text-sm text-destructive sm:col-span-2">
+                  {issueFormError ?? mutationError}
+                </p>
+              ) : null}
+            </div>
+
+            <DialogFooter className="sm:justify-between">
+              <div>
+                {editingIssue ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={isMutating}
+                    onClick={() => {
+                      setDeleteIssueError(null)
+                      setPendingDeleteIssue(editingIssue)
+                    }}
+                  >
+                    <Trash2Icon />
+                    Delete
+                  </Button>
+                ) : null}
+              </div>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <DialogClose type="button" disabled={isMutating}>
+                  Cancel
+                </DialogClose>
+                <Button type="submit" disabled={isMutating}>
+                  {editingIssue ? <PencilIcon /> : <PlusIcon />}
+                  {isMutating
+                    ? "Saving..."
+                    : editingIssue
+                      ? "Save Issue"
+                      : "Add Issue"}
+                </Button>
+              </div>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isQualityDialogOpen}
+        onOpenChange={handleQualityDialogOpenChange}
+      >
+        <DialogContent>
+          <form onSubmit={handleQualitySubmit}>
+            <DialogHeader>
+              <DialogTitle>
+                {editingQuality ? "Edit Quality" : "Add Quality"}
+              </DialogTitle>
+              <DialogDescription>
+                Track a capability you are building or maintaining.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid gap-3 py-4 sm:grid-cols-[1fr_150px]">
+              <div className="space-y-2">
+                <Label htmlFor="quality-name">Quality</Label>
+                <Input
+                  id="quality-name"
+                  value={qualityForm.name}
+                  maxLength={120}
+                  placeholder="Ankle dorsiflexion control"
+                  autoFocus
+                  onChange={(event) =>
+                    setQualityForm((current) => ({
+                      ...current,
+                      name: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="quality-status">Status</Label>
+                <select
+                  id="quality-status"
+                  className={selectClassName()}
+                  value={qualityForm.status}
+                  onChange={(event) =>
+                    setQualityForm((current) => ({
+                      ...current,
+                      status: event.target.value as UserQualityStatus,
+                    }))
+                  }
+                >
+                  <option value="building">Building</option>
+                  <option value="maintaining">Maintaining</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="quality-target">Frequency Target</Label>
+                <Input
+                  id="quality-target"
+                  value={qualityForm.trainingFrequencyTarget}
+                  maxLength={120}
+                  placeholder="Daily warmup exposure"
+                  onChange={(event) =>
+                    setQualityForm((current) => ({
+                      ...current,
+                      trainingFrequencyTarget: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="quality-notes">Notes</Label>
+                <Textarea
+                  id="quality-notes"
+                  value={qualityForm.notes}
+                  placeholder="Progression notes, constraints, and cues"
+                  onChange={(event) =>
+                    setQualityForm((current) => ({
+                      ...current,
+                      notes: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              {qualityFormError || mutationError ? (
+                <p className="text-sm text-destructive sm:col-span-2">
+                  {qualityFormError ?? mutationError}
+                </p>
+              ) : null}
+            </div>
+
+            <DialogFooter className="sm:justify-between">
+              <div>
+                {editingQuality ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isMutating}
+                    onClick={() => {
+                      void handleRemoveQualityFromProfile()
+                    }}
+                  >
+                    <CircleSlashIcon />
+                    Stop Tracking
+                  </Button>
+                ) : null}
+              </div>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <DialogClose type="button" disabled={isMutating}>
+                  Cancel
+                </DialogClose>
+                <Button type="submit" disabled={isMutating}>
+                  {editingQuality ? <PencilIcon /> : <PlusIcon />}
+                  {isMutating
+                    ? "Saving..."
+                    : editingQuality
+                      ? "Save Quality"
+                      : "Add Quality"}
+                </Button>
+              </div>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={Boolean(pendingDeleteIssue)}
+        onOpenChange={handleDeleteIssueDialogOpenChange}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Issue?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`This will permanently delete "${pendingDeleteIssue?.name ?? "this issue"}". This cannot be undone.`}
+            </AlertDialogDescription>
+            {deleteIssueError ? (
+              <p className="text-sm text-destructive">{deleteIssueError}</p>
+            ) : null}
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button" disabled={isMutating}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isMutating}
+              onClick={() => {
+                void handleDeleteIssue()
+              }}
+            >
+              {isMutating ? "Deleting..." : "Delete"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
